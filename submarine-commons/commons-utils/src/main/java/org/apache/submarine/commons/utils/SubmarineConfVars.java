@@ -63,12 +63,15 @@ public class SubmarineConfVars {
     METASTORE_JDBC_USERNAME("metastore.jdbc.username", "metastore"),
     METASTORE_JDBC_PASSWORD("metastore.jdbc.password", "password"),
 
-    SUBMARINE_NOTEBOOK_DEFAULT_OVERWRITE_JSON("submarine.notebook.default.overwrite_json", ""),
-
     /* cookie setting */
     SUBMARINE_COOKIE_HTTP_ONLY("submarine.cookie.http.only", false),
     SUBMARINE_COOKIE_SECURE("submarine.cookie.secure", false),
     SUBMARINE_COOKIE_SAMESITE("submarine.cookie.samesite", ""),
+
+    /* auth */
+    SUBMARINE_AUTH_TYPE("submarine.auth.type", "default"),
+
+    SUBMARINE_NOTEBOOK_DEFAULT_OVERWRITE_JSON("submarine.notebook.default.overwrite_json", ""),
 
     WORKBENCH_WEBSOCKET_MAX_TEXT_MESSAGE_SIZE(
         "workbench.websocket.max.text.message.size", "1024000"),
