@@ -65,6 +65,11 @@ public class SubmarineConfVars {
 
     SUBMARINE_NOTEBOOK_DEFAULT_OVERWRITE_JSON("submarine.notebook.default.overwrite_json", ""),
 
+    /* cookie setting */
+    SUBMARINE_COOKIE_HTTP_ONLY("submarine.cookie.http.only", false),
+    SUBMARINE_COOKIE_SECURE("submarine.cookie.secure", false),
+    SUBMARINE_COOKIE_SAMESITE("submarine.cookie.samesite", ""),
+
     WORKBENCH_WEBSOCKET_MAX_TEXT_MESSAGE_SIZE(
         "workbench.websocket.max.text.message.size", "1024000"),
     WORKBENCH_WEB_WAR("workbench.web.war", "submarine-workbench/workbench-web/dist"),
