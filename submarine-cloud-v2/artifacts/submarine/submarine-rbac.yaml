@@ -79,7 +79,7 @@ rules:
   - delete
   - deletecollection
   - patch
-  - update  
+  - update
 - apiGroups:
   - ""
   resources:
@@ -87,6 +87,7 @@ rules:
   - pods/log
   - services
   - persistentvolumeclaims
+  - configmaps
   - events
   verbs:
   - '*'

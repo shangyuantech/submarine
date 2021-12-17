@@ -42,6 +42,7 @@ import io.kubernetes.client.JSON;
 import io.kubernetes.client.apis.AppsV1Api;
 import io.kubernetes.client.apis.CoreV1Api;
 import io.kubernetes.client.apis.CustomObjectsApi;
+import io.kubernetes.client.models.V1ConfigMap;
 import io.kubernetes.client.models.V1DeleteOptionsBuilder;
 import io.kubernetes.client.models.V1Deployment;
 import io.kubernetes.client.models.V1Event;
@@ -55,6 +56,8 @@ import io.kubernetes.client.util.ClientBuilder;
 import io.kubernetes.client.util.KubeConfig;
 import io.kubernetes.client.util.Watch;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.submarine.commons.utils.SubmarineConfVars;
 import org.apache.submarine.commons.utils.SubmarineConfiguration;
 import org.apache.submarine.commons.utils.exception.SubmarineRuntimeException;
 import org.apache.submarine.serve.istio.IstioVirtualService;
@@ -79,6 +82,7 @@ import org.apache.submarine.server.submitter.k8s.model.ingressroute.IngressRoute
 import org.apache.submarine.server.submitter.k8s.model.ingressroute.SpecRoute;
 import org.apache.submarine.server.submitter.k8s.model.pytorchjob.PyTorchJob;
 import org.apache.submarine.server.submitter.k8s.model.tfjob.TFJob;
+import org.apache.submarine.server.submitter.k8s.parser.ConfigmapSpecParser;
 import org.apache.submarine.server.submitter.k8s.parser.ExperimentSpecParser;
 import org.apache.submarine.server.submitter.k8s.parser.NotebookSpecParser;
 import org.apache.submarine.server.submitter.k8s.parser.VolumeSpecParser;
@@ -101,6 +105,11 @@ public class K8sSubmitter implements Submitter {
   private static final String PYTORCH_JOB_SELECTOR_KEY = "pytorch-job-name=";
 
   private static final String ENV_NAMESPACE = "ENV_NAMESPACE";
+
+  private static final SubmarineConfiguration conf =
+          SubmarineConfiguration.getInstance();
+  private static String OVERWRITE_JSON = conf.getString(
+          SubmarineConfVars.ConfVars.SUBMARINE_NOTEBOOK_DEFAULT_OVERWRITE_JSON);
 
   // K8s API client for CRD
   private CustomObjectsApi api;
@@ -386,6 +395,7 @@ public class K8sSubmitter implements Submitter {
     final String host = NotebookUtils.HOST_PATH;
     final String workspacePvc = String.format("%s-%s", NotebookUtils.PVC_PREFIX, name);
     final String userPvc = String.format("%s-user-%s", NotebookUtils.PVC_PREFIX, name);
+    final String configmap = String.format("%s-%s", NotebookUtils.OVERWRITE_PREFIX, name);
     String namespace = getServerNamespace();
 
     // parse notebook custom resource
@@ -413,6 +423,23 @@ public class K8sSubmitter implements Submitter {
           "Notebook object failed by " + e.getMessage());
     }
 
+    // create configmap if needed
+    boolean needOverwrite = StringUtils.isNotBlank(OVERWRITE_JSON);
+    if (needOverwrite) {
+      try {
+        createConfigMap(configmap, namespace, NotebookUtils.DEFAULT_OVERWRITE_FILE_NAME, OVERWRITE_JSON);
+      } catch (JsonSyntaxException e) {
+        LOG.error("K8s submitter: parse response object failed by " + e.getMessage(), e);
+        rollbackCreationPVC(namespace, workspacePvc, userPvc);
+        throw new SubmarineRuntimeException(500, "K8s Submitter parse upstream response failed.");
+      } catch (ApiException e) {
+        LOG.error("K8s submitter: parse Notebook object failed by " + e.getMessage(), e);
+        rollbackCreationPVC(namespace, workspacePvc, userPvc);
+        throw new SubmarineRuntimeException(e.getCode(), "K8s submitter: parse Notebook object failed by " +
+                e.getMessage());
+      }
+    }
+
     // create notebook custom resource
     try {
       Object object = api.createNamespacedCustomObject(notebookCR.getGroup(), notebookCR.getVersion(),
@@ -421,10 +448,12 @@ public class K8sSubmitter implements Submitter {
     } catch (JsonSyntaxException e) {
       LOG.error("K8s submitter: parse response object failed by " + e.getMessage(), e);
       rollbackCreationPVC(namespace, workspacePvc, userPvc);
+      if (needOverwrite) rollbackCreationConfigMap(namespace, configmap);
       throw new SubmarineRuntimeException(500, "K8s Submitter parse upstream response failed.");
     } catch (ApiException e) {
       LOG.error("K8s submitter: parse Notebook object failed by " + e.getMessage(), e);
       rollbackCreationPVC(namespace, workspacePvc, userPvc);
+      if (needOverwrite) rollbackCreationConfigMap(namespace, configmap);
       throw new SubmarineRuntimeException(e.getCode(), "K8s submitter: parse Notebook object failed by " +
           e.getMessage());
     }
@@ -437,6 +466,7 @@ public class K8sSubmitter implements Submitter {
           e.getMessage(), e);
       rollbackCreationNotebook(notebookCR, namespace);
       rollbackCreationPVC(namespace, workspacePvc, userPvc);
+      if (needOverwrite) rollbackCreationConfigMap(namespace, configmap);
       throw new SubmarineRuntimeException(e.getCode(), "K8s submitter: ingressroute for Notebook " +
           "object failed by " + e.getMessage());
     }
@@ -502,6 +532,11 @@ public class K8sSubmitter implements Submitter {
       deletePersistentVolumeClaim(String.format("%s-%s", NotebookUtils.PVC_PREFIX, name), namespace);
       // user set pvc
       deletePersistentVolumeClaim(String.format("%s-user-%s", NotebookUtils.PVC_PREFIX, name), namespace);
+
+      // configmap
+      if (StringUtils.isNoneBlank(OVERWRITE_JSON)) {
+        deleteConfigMap(namespace, String.format("%s-%s", NotebookUtils.OVERWRITE_PREFIX, name));
+      }
     } catch (ApiException e) {
       throw new SubmarineRuntimeException(e.getCode(), e.getMessage());
     }
@@ -806,6 +841,49 @@ public class K8sSubmitter implements Submitter {
       throw new SubmarineRuntimeException("Given serve type: " + modelType + " is not supported.");
     }
     return seldonDeployment;
+  }
+
+  /**
+   * Create ConfigMap with values (key1, value1, key2, value2, ...)
+   */
+  public void createConfigMap(String name, String namespace, String ... values)
+          throws ApiException {
+    V1ConfigMap configMap = ConfigmapSpecParser.parseConfigMap(name, values);
+    configMap.getMetadata().setOwnerReferences(OwnerReferenceUtils.getOwnerReference());
+    try {
+      coreApi.createNamespacedConfigMap(namespace, configMap, "true", null, null);
+    } catch (ApiException e) {
+      LOG.error("Exception when creating configmap " + e.getMessage(), e);
+      throw e;
+    }
+  }
+
+  /**
+   * Delete ConfigMap
+   */
+  public void deleteConfigMap(String namespace, String name) throws ApiException {
+    try {
+      coreApi.deleteNamespacedConfigMap(name, namespace,
+              "true", null, null, null,
+              null, null);
+    } catch (ApiException e) {
+      LOG.error("Exception when deleting config map " + e.getMessage(), e);
+      throw e;
+    }
+  }
+
+  /**
+   * Rollback to delete ConfigMap
+   */
+  private void rollbackCreationConfigMap(String namespace, String ... names)
+          throws SubmarineRuntimeException {
+    try {
+      for (String name : names) {
+        deleteConfigMap(namespace, name);
+      }
+    } catch (ApiException e) {
+      throw new SubmarineRuntimeException(e.getCode(), e.getMessage());
+    }
   }
 
   private void rollbackCreationPVC(String namespace, String ... pvcNames) {
