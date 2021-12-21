@@ -89,6 +89,7 @@ rules:
   - persistentvolumeclaims
   - configmaps
   - events
+  - configmaps
   verbs:
   - '*'
 - apiGroups:
