@@ -19,15 +19,13 @@
 
 package org.apache.submarine.server.submitter.k8s;
 
-import io.kubernetes.client.models.V1ConfigMap;
-import io.kubernetes.client.models.V1EnvVar;
-import io.kubernetes.client.models.V1ObjectMeta;
+import io.kubernetes.client.openapi.models.V1EnvVar;
+import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import org.apache.submarine.server.api.spec.NotebookMeta;
 import org.apache.submarine.server.api.spec.NotebookPodSpec;
 import org.apache.submarine.server.api.spec.NotebookSpec;
 import org.apache.submarine.server.submitter.k8s.model.NotebookCR;
 import org.apache.submarine.server.submitter.k8s.model.NotebookCRSpec;
-import org.apache.submarine.server.submitter.k8s.parser.ConfigmapSpecParser;
 import org.apache.submarine.server.submitter.k8s.parser.NotebookSpecParser;
 import org.junit.Assert;
 import org.junit.Test;
@@ -85,22 +83,6 @@ public class NotebookSpecParserTest extends SpecBuilder {
     String expectedContainerCpu = podSpec.getCpu();
     String actualContainerCpu = notebookCRSpec.getContainerCpu();
     Assert.assertEquals(expectedContainerCpu, actualContainerCpu);
-  }
-
-  @Test
-  public void testConfigMap() {
-    String overwriteJson = "{ \"@jupyterlab/translation-extension:plugin\": " +
-            "{ \"locale\": \"zh_CN\" } }";
-    V1ConfigMap configMap = ConfigmapSpecParser.parseConfigMap("test",
-            "overwrite.json", overwriteJson);
-    Map<String, String> data = configMap.getData();
-    Assert.assertEquals(data.size(), 1);
-    Assert.assertEquals(data.get("overwrite.json"), overwriteJson);
-
-    V1ConfigMap configMap2 = ConfigmapSpecParser.parseConfigMap("test", data);
-    Map<String, String> data2 = configMap2.getData();
-    Assert.assertEquals(data2.size(), 1);
-    Assert.assertEquals(data2.get("overwrite.json"), overwriteJson);
   }
 
 }
