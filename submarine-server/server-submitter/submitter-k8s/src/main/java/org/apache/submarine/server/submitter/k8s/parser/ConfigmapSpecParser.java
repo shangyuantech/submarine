@@ -19,8 +19,8 @@
 
 package org.apache.submarine.server.submitter.k8s.parser;
 
-import io.kubernetes.client.models.V1ConfigMap;
-import io.kubernetes.client.models.V1ObjectMeta;
+import io.kubernetes.client.openapi.models.V1ConfigMap;
+import io.kubernetes.client.openapi.models.V1ObjectMeta;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
