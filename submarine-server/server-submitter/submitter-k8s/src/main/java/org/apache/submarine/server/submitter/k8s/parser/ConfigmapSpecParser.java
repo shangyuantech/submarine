@@ -22,20 +22,23 @@ package org.apache.submarine.server.submitter.k8s.parser;
 
 import io.kubernetes.client.openapi.models.V1ConfigMap;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class ConfigmapSpecParser {
 
-  public static V1ConfigMap parseConfigMap(String name, String ... values) {
+  private static final Logger LOG = LoggerFactory.getLogger(ConfigmapSpecParser.class);
+
+  public static V1ConfigMap parseConfigMap(String name, String... values) {
     Map<String, String> datas = new LinkedHashMap<>();
-    String key = null;
-    for (int i = 0; i < values.length; i++) {
-      if (i % 2 == 0) {
-        key = values[i];
-      } else {
-        datas.put(key, values[i]);
+    for (int i = 0, size = values.length; i < size; i += 2) {
+      try {
+        datas.put(values[i], values[i + 1]);
+      } catch (ArrayIndexOutOfBoundsException e) {// Avoid values by odd numbers
+        LOG.warn("Can not find ConfigMap value in index[{}], skip this value", i + 1);
       }
     }
     return parseConfigMap(name, datas);
