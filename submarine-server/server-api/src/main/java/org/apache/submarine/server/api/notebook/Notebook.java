@@ -21,8 +21,6 @@ package org.apache.submarine.server.api.notebook;
 
 import org.apache.submarine.server.api.spec.NotebookSpec;
 
-import java.sql.Timestamp;
-
 /**
  * The notebook instance in submarine
  */
