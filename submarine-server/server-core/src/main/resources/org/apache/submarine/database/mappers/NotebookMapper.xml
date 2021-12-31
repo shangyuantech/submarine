@@ -28,11 +28,12 @@
   </resultMap>
 
   <resultMap id="NotebookEntityResultMap" type="org.apache.submarine.server.notebook.database.entity.NotebookEntity" extends="BaseEntityResultMap">
+    <result column="started" jdbcType="BOOLEAN" property="started"/>
     <result column="notebook_spec" jdbcType="VARCHAR" property="notebookSpec" />
   </resultMap>
 
   <sql id="Base_Column_List">
-    id, notebook_spec, create_by, create_time, update_by, update_time
+    id, notebook_spec, started, create_by, create_time, update_by, update_time
   </sql>
 
   <select id="selectAll" parameterType="java.lang.String" resultMap="NotebookEntityResultMap">
@@ -67,6 +68,16 @@
       </if>
       update_time = now()
     </set>
+    where id = #{id,jdbcType=VARCHAR}
+  </update>
+
+  <update id="stop" parameterType="java.lang.String">
+    update notebook set started = 0
+    where id = #{id,jdbcType=VARCHAR}
+  </update>
+
+  <update id="start" parameterType="java.lang.String">
+    update notebook set started = 1
     where id = #{id,jdbcType=VARCHAR}
   </update>
 

@@ -27,6 +27,8 @@ public class NotebookEntity extends BaseEntity {
   */
   private String notebookSpec;
 
+  private boolean started = true;
+
   public NotebookEntity() {
   }
 
@@ -38,11 +40,20 @@ public class NotebookEntity extends BaseEntity {
     this.notebookSpec = notebookSpec;
   }
 
+  public boolean isStarted() {
+    return started;
+  }
+
+  public void setStarted(boolean started) {
+    this.started = started;
+  }
+
   @Override
   public String toString() {
     return "NotebookEntity{" +
         "notebookSpec='" + notebookSpec + '\'' +
         ", id='" + id + '\'' +
+        ", started='" + started + '\'' +
         ", createBy='" + createBy + '\'' +
         ", createTime=" + createTime +
         ", updateBy='" + updateBy + '\'' +

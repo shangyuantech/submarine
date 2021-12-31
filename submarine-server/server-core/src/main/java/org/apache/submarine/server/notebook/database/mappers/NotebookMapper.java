@@ -33,4 +33,8 @@ public interface NotebookMapper {
   int update(NotebookEntity notebook);
 
   int delete(String id);
+
+  int stop(String id);
+
+  int start(String id);
 }

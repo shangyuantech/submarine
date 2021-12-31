@@ -30,6 +30,7 @@ public class Notebook {
   private String uid;
   private String url;
   private String status;
+  private boolean started;
   private String reason;
   private String createdTime;
   private String deletedTime;
@@ -103,6 +104,14 @@ public class Notebook {
     return spec;
   }
 
+  public boolean isStarted() {
+    return started;
+  }
+
+  public void setStarted(boolean started) {
+    this.started = started;
+  }
+
   public void setSpec(NotebookSpec spec) {
     this.spec = spec;
   }
@@ -115,9 +124,19 @@ public class Notebook {
     STATUS_NOT_FOUND("not_found"),
     STATUS_PULLING("pulling");
 
-    private String value;
+    private final String value;
+
     Status(String value) {
       this.value = value;
+    }
+
+    public static Status getStatus(String value) {
+      for (Status status : Status.values()) {
+        if (status.value.equalsIgnoreCase(value)) {
+          return status;
+        }
+      }
+      return STATUS_NOT_FOUND;
     }
 
     public String getValue() {

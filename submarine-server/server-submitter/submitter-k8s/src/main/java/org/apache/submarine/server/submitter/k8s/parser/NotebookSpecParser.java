@@ -70,7 +70,7 @@ public class NotebookSpecParser {
     return notebookCR;
   }
 
-  private static V1ObjectMeta parseMetadata(NotebookSpec spec) {
+  public static V1ObjectMeta parseMetadata(NotebookSpec spec) {
     V1ObjectMeta meta = new V1ObjectMeta();
     meta.setName(spec.getMeta().getName());
     meta.setNamespace(spec.getMeta().getNamespace());
@@ -78,7 +78,7 @@ public class NotebookSpecParser {
     return meta;
   }
 
-  private static NotebookCRSpec parseNotebookCRSpec(NotebookSpec spec) {
+  public static NotebookCRSpec parseNotebookCRSpec(NotebookSpec spec) {
     NotebookCRSpec CRSpec = new NotebookCRSpec();
     CRSpec.setTemplate(parseTemplateSpec(spec));
     return CRSpec;

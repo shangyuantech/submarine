@@ -161,4 +161,36 @@ public class NotebookService {
     }
     return notebook;
   }
+
+  /**
+   * Update notebook row started to 0
+   */
+  public boolean stop(String id) throws SubmarineRuntimeException {
+    LOG.info("Notebook stop {}", id);
+    try (SqlSession sqlSession = MyBatisUtil.getSqlSession()) {
+      NotebookMapper mapper = sqlSession.getMapper(NotebookMapper.class);
+      mapper.stop(id);
+      sqlSession.commit();
+    } catch (Exception e) {
+      LOG.error(e.getMessage(), e);
+      throw new SubmarineRuntimeException("Unable to stop notebook entity from database");
+    }
+    return true;
+  }
+
+  /**
+   * Update notebook row started to 1
+   */
+  public boolean start(String id) throws SubmarineRuntimeException {
+    LOG.info("Notebook start {}", id);
+    try (SqlSession sqlSession = MyBatisUtil.getSqlSession()) {
+      NotebookMapper mapper = sqlSession.getMapper(NotebookMapper.class);
+      mapper.start(id);
+      sqlSession.commit();
+    } catch (Exception e) {
+      LOG.error(e.getMessage(), e);
+      throw new SubmarineRuntimeException("Unable to stop notebook entity from database");
+    }
+    return true;
+  }
 }

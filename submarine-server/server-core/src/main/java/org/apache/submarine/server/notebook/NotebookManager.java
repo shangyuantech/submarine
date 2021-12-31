@@ -142,6 +142,7 @@ public class NotebookManager {
         Notebook notebook = submitter.findNotebook(nb.getSpec());
         notebook.setNotebookId(nb.getNotebookId());
         notebook.setSpec(nb.getSpec());
+        notebook.setStarted(nb.isStarted());
         if (notebook.getCreatedTime() == null) {
           notebook.setCreatedTime(nb.getCreatedTime());
         }
@@ -226,6 +227,42 @@ public class NotebookManager {
       throw new SubmarineRuntimeException(Response.Status.NOT_FOUND.getStatusCode(),
           "Notebook not found.");
     }
+  }
+
+  /**
+   * Stop specify notebook instance
+   *
+   * @param id notebook id
+   * @return object
+   * @throws SubmarineRuntimeException the service error
+   */
+  public Notebook stopNotebook(String id) throws SubmarineRuntimeException {
+    Notebook notebook = getNotebook(id);
+    Notebook deleteNotebook = submitter.stopNotebook(notebook.getSpec());
+    notebookService.stop(id);
+    if (Notebook.Status.getStatus(deleteNotebook.getStatus()) == Notebook.Status.STATUS_NOT_FOUND) {
+      throw new SubmarineRuntimeException(Response.Status.NOT_FOUND.getStatusCode(),
+          "Notebook has already stopped. You don't need to stop again!");
+    }
+    return deleteNotebook;
+  }
+
+  /**
+   * Start specify notebook instance
+   *
+   * @param id notebook id
+   * @return object
+   * @throws SubmarineRuntimeException the service error
+   */
+  public Notebook startNotebook(String id) throws SubmarineRuntimeException {
+    Notebook notebook = notebookService.select(id);
+    if (notebook == null) {
+      throw new SubmarineRuntimeException(Response.Status.NOT_FOUND.getStatusCode(),
+              "Notebook not found or is deleted.");
+    }
+    Notebook startNotebook = submitter.startNotebook(notebook.getSpec());
+    notebookService.start(id);
+    return startNotebook;
   }
 
 }

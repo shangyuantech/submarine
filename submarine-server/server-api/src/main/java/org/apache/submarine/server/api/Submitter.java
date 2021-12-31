@@ -153,4 +153,20 @@ public interface Submitter {
    * @throws SubmarineRuntimeException running error
    */
   MlflowInfo getMlflowInfo() throws SubmarineRuntimeException;
+
+  /**
+   * Start Notebook instance
+   * @param spec spec
+   * @return Notebook
+   * @throws SubmarineRuntimeException running error
+   */
+  Notebook startNotebook(NotebookSpec spec) throws SubmarineRuntimeException;
+
+  /**
+   * Stop Notebook instance
+   * @param spec spec
+   * @return Notebook
+   * @throws SubmarineRuntimeException running error
+   */
+  Notebook stopNotebook(NotebookSpec spec) throws SubmarineRuntimeException;
 }

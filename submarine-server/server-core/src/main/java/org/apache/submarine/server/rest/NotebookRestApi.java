@@ -169,4 +169,52 @@ public class NotebookRestApi {
     return new JsonResponse.Builder<String>(e.getCode()).message(e.getMessage()).build();
   }
 
+  /**
+   * Stop specify notebook instance
+   * @param id notebook id
+   * @return the detailed info about stop notebook
+   */
+  @POST
+  @Path("/stop/{id}")
+  @Consumes({RestConstants.MEDIA_TYPE_YAML, MediaType.APPLICATION_JSON})
+  @Operation(
+          summary = "Stop specify notebook instance",
+          tags = {"notebook"},
+          responses = {
+                  @ApiResponse(description = "successful operation", content = @Content(
+                          schema = @Schema(implementation = JsonResponse.class)))})
+  public Response stopNotebook(@PathParam(RestConstants.NOTEBOOK_ID) String id) {
+    try {
+      Notebook notebook = notebookManager.stopNotebook(id);
+      return new JsonResponse.Builder<Notebook>(Response.Status.OK).success(true)
+              .message("Stop specify notebook instance successfully").result(notebook).build();
+    } catch (SubmarineRuntimeException e) {
+      return parseNotebookServiceException(e);
+    }
+  }
+
+  /**
+   * Stop specify notebook instance
+   * @param id notebook id
+   * @return the detailed info about stop notebook
+   */
+  @POST
+  @Path("/start/{id}")
+  @Consumes({RestConstants.MEDIA_TYPE_YAML, MediaType.APPLICATION_JSON})
+  @Operation(
+          summary = "Start specify notebook instance",
+          tags = {"notebook"},
+          responses = {
+                  @ApiResponse(description = "successful operation", content = @Content(
+                          schema = @Schema(implementation = JsonResponse.class)))})
+  public Response startNotebook(@PathParam(RestConstants.NOTEBOOK_ID) String id) {
+    try {
+      Notebook notebook = notebookManager.startNotebook(id);
+      return new JsonResponse.Builder<Notebook>(Response.Status.OK).success(true)
+              .message("Start specify notebook instance successfully").result(notebook).build();
+    } catch (SubmarineRuntimeException e) {
+      return parseNotebookServiceException(e);
+    }
+  }
+
 }

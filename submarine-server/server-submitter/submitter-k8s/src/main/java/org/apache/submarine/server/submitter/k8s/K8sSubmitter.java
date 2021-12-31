@@ -28,8 +28,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.Consumer;
-
 
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
@@ -90,7 +88,6 @@ import org.apache.submarine.server.submitter.k8s.util.MLJobConverter;
 import org.apache.submarine.server.submitter.k8s.util.NotebookUtils;
 import org.apache.submarine.server.submitter.k8s.util.OwnerReferenceUtils;
 
-import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,7 +104,7 @@ public class K8sSubmitter implements Submitter {
 
   private static final String ENV_NAMESPACE = "ENV_NAMESPACE";
 
-  private static String OVERWRITE_JSON;
+  private static final String OVERWRITE_JSON;
 
   static {
     final SubmarineConfiguration conf = SubmarineConfiguration.getInstance();
@@ -403,16 +400,7 @@ public class K8sSubmitter implements Submitter {
     String namespace = getServerNamespace();
 
     // parse notebook custom resource
-    NotebookCR notebookCR;
-    try {
-      notebookCR = NotebookSpecParser.parseNotebook(spec);
-
-      notebookCR.getMetadata().setNamespace(namespace);
-      notebookCR.getMetadata().setOwnerReferences(OwnerReferenceUtils.getOwnerReference());
-    } catch (JsonSyntaxException e) {
-      LOG.error("K8s submitter: parse response object failed by " + e.getMessage(), e);
-      throw new SubmarineRuntimeException(500, "K8s Submitter parse upstream response failed.");
-    }
+    NotebookCR notebookCR = new NotebookCR(spec, namespace);
 
     // create persistent volume claim
     try {
@@ -446,15 +434,8 @@ public class K8sSubmitter implements Submitter {
 
     // create notebook custom resource
     try {
-      Object object = api.createNamespacedCustomObject(notebookCR.getGroup(), notebookCR.getVersion(),
-          namespace, notebookCR.getPlural(), notebookCR, "true", null, null);
-      notebook = NotebookUtils.parseObject(object, NotebookUtils.ParseOpt.PARSE_OPT_CREATE);
-    } catch (JsonSyntaxException e) {
-      LOG.error("K8s submitter: parse response object failed by " + e.getMessage(), e);
-      if (needOverwrite) rollbackCreationConfigMap(namespace, configmap);
-      rollbackCreationPVC(namespace, workspacePvc, userPvc);
-      throw new SubmarineRuntimeException(500, "K8s Submitter parse upstream response failed.");
-    } catch (ApiException e) {
+      notebook = notebookCR.createNotebookCRD(api);
+    } catch (SubmarineRuntimeException e) {
       LOG.error("K8s submitter: parse Notebook object failed by " + e.getMessage(), e);
       if (needOverwrite) rollbackCreationConfigMap(namespace, configmap);
       rollbackCreationPVC(namespace, workspacePvc, userPvc);
@@ -528,29 +509,12 @@ public class K8sSubmitter implements Submitter {
 
   @Override
   public Notebook deleteNotebook(NotebookSpec spec) throws SubmarineRuntimeException {
-    Notebook notebook = null;
     final String name = spec.getMeta().getName();
     String namespace = getServerNamespace();
-    NotebookCR notebookCR = NotebookSpecParser.parseNotebook(spec);
+    NotebookCR notebookCR = new NotebookCR(spec, namespace);
 
-    try {
-      Object object = api.deleteNamespacedCustomObject(notebookCR.getGroup(), notebookCR.getVersion(),
-          namespace, notebookCR.getPlural(),
-          notebookCR.getMetadata().getName(), null, null, null,
-              null, new V1DeleteOptionsBuilder().withApiVersion(notebookCR.getApiVersion()).build());
-      notebook = NotebookUtils.parseObject(object, NotebookUtils.ParseOpt.PARSE_OPT_DELETE);
-    } catch (ApiException e) {
-      apic.accept(e);
-    } finally {
-      if (notebook == null) {
-        // add metadata time info
-        notebookCR.getMetadata().setDeletionTimestamp(new DateTime());
-        // build notebook response
-        notebook = NotebookUtils.buildNotebookResponse(notebookCR);
-        notebook.setStatus(Notebook.Status.STATUS_NOT_FOUND.getValue());
-        notebook.setReason("The notebook instance is not found");
-      }
-    }
+    // delete crd
+    Notebook notebook = notebookCR.deleteNotebookCRD(api);
 
     // delete ingress route
     deleteIngressRoute(namespace, name);
@@ -653,7 +617,7 @@ public class K8sSubmitter implements Submitter {
     }
   }
 
-  public void watchExperiment() throws ApiException{
+  public void watchExperiment() throws ApiException {
 
     ExecutorService experimentThread = Executors.newFixedThreadPool(2);
 
@@ -773,7 +737,7 @@ public class K8sSubmitter implements Submitter {
       );
     } catch (ApiException e) {
       LOG.error("Exception when deleting persistent volume claim " + e.getMessage(), e);
-      apic.accept(e);
+      NotebookUtils.API_EXCEPTION_404_CONSUMER.accept(e);
     } catch (JsonSyntaxException e) {
       if (e.getCause() instanceof IllegalStateException) {
         IllegalStateException ise = (IllegalStateException) e.getCause();
@@ -828,7 +792,7 @@ public class K8sSubmitter implements Submitter {
               null, new V1DeleteOptionsBuilder().withApiVersion(IngressRoute.CRD_APIVERSION_V1).build());
     } catch (ApiException e) {
       LOG.error("K8s submitter: Delete Traefik custom resource object failed by " + e.getMessage(), e);
-      apic.accept(e);
+      NotebookUtils.API_EXCEPTION_404_CONSUMER.accept(e);
     }
   }
 
@@ -894,7 +858,7 @@ public class K8sSubmitter implements Submitter {
               null, null);
     } catch (ApiException e) {
       LOG.error("Exception when deleting config map " + e.getMessage(), e);
-      apic.accept(e);
+      NotebookUtils.API_EXCEPTION_404_CONSUMER.accept(e);
     }
   }
 
@@ -926,13 +890,6 @@ public class K8sSubmitter implements Submitter {
     }
   }
 
-  // Add an exception Consumer, handle the problem that delete operation does not have the resource
-  final Consumer<ApiException> apic = e -> {
-    if (e.getCode() != 404) {
-      throw new SubmarineRuntimeException(e.getCode(), e.getMessage());
-    }
-  };
-
   private String getServerNamespace() {
     String namespace = "default";
     if (System.getenv(ENV_NAMESPACE) != null) {
@@ -944,5 +901,21 @@ public class K8sSubmitter implements Submitter {
   private enum ParseOp {
     PARSE_OP_RESULT,
     PARSE_OP_DELETE
+  }
+
+  @Override
+  public Notebook startNotebook(NotebookSpec spec) throws SubmarineRuntimeException {
+    String namespace = getServerNamespace();
+    NotebookCR notebookCR = new NotebookCR(spec, namespace);
+    // create crd
+    return notebookCR.createNotebookCRD(api, true);
+  }
+
+  @Override
+  public Notebook stopNotebook(NotebookSpec spec) throws SubmarineRuntimeException {
+    String namespace = getServerNamespace();
+    NotebookCR notebookCR = new NotebookCR(spec, namespace);
+    // delete crd
+    return notebookCR.deleteNotebookCRD(api);
   }
 }

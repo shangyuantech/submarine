@@ -21,6 +21,7 @@ package org.apache.submarine.server.submitter.k8s.util;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
+import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.JSON;
 import io.kubernetes.client.openapi.models.V1ContainerState;
 import io.kubernetes.client.openapi.models.V1Status;
@@ -33,6 +34,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +58,7 @@ public class NotebookUtils {
   public enum ParseOpt {
     PARSE_OPT_CREATE,
     PARSE_OPT_GET,
+    PARSE_OPT_REPLACE,
     PARSE_OPT_DELETE;
   }
 
@@ -169,4 +172,11 @@ public class NotebookUtils {
     }
     return notebook;
   }
+
+  // Add an exception Consumer, handle the problem that delete operation does not have the resource
+  public static final Consumer<ApiException> API_EXCEPTION_404_CONSUMER = e -> {
+    if (e.getCode() != 404) {
+      throw new SubmarineRuntimeException(e.getCode(), e.getMessage());
+    }
+  };
 }
