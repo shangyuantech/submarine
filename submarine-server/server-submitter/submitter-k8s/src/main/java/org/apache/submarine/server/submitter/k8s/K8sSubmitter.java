@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 
 
 import com.google.common.reflect.TypeToken;
@@ -89,6 +90,7 @@ import org.apache.submarine.server.submitter.k8s.util.MLJobConverter;
 import org.apache.submarine.server.submitter.k8s.util.NotebookUtils;
 import org.apache.submarine.server.submitter.k8s.util.OwnerReferenceUtils;
 
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -478,7 +480,7 @@ public class K8sSubmitter implements Submitter {
 
   @Override
   public Notebook findNotebook(NotebookSpec spec) throws SubmarineRuntimeException {
-    Notebook notebook;
+    Notebook notebook = null;
     String namespace = getServerNamespace();
 
     try {
@@ -508,39 +510,62 @@ public class K8sSubmitter implements Submitter {
         }
       }
     } catch (ApiException e) {
-      throw new SubmarineRuntimeException(e.getCode(), e.getMessage());
+      // SUBMARINE-1124
+      // The exception that obtaining CRD resources is not necessarily because the CRD is deleted,
+      // but maybe due to timeout or API error caused by network and other reasons.
+      // Therefore, the status of the notebook should be set to a new enum NOTFOUND.
+      LOG.warn("Get error when submitter is finding notebook: {}", spec.getMeta().getName());
+      if (notebook == null) {
+        notebook = new Notebook();
+      }
+      notebook.setName(spec.getMeta().getName());
+      notebook.setSpec(spec);
+      notebook.setReason(e.getMessage());
+      notebook.setStatus(Notebook.Status.STATUS_NOT_FOUND.getValue());
     }
     return notebook;
   }
 
   @Override
   public Notebook deleteNotebook(NotebookSpec spec) throws SubmarineRuntimeException {
-    Notebook notebook;
+    Notebook notebook = null;
     final String name = spec.getMeta().getName();
     String namespace = getServerNamespace();
+    NotebookCR notebookCR = NotebookSpecParser.parseNotebook(spec);
 
     try {
-      NotebookCR notebookCR = NotebookSpecParser.parseNotebook(spec);
       Object object = api.deleteNamespacedCustomObject(notebookCR.getGroup(), notebookCR.getVersion(),
           namespace, notebookCR.getPlural(),
           notebookCR.getMetadata().getName(), null, null, null,
               null, new V1DeleteOptionsBuilder().withApiVersion(notebookCR.getApiVersion()).build());
       notebook = NotebookUtils.parseObject(object, NotebookUtils.ParseOpt.PARSE_OPT_DELETE);
-      deleteIngressRoute(namespace, notebookCR.getMetadata().getName());
-
-      // delete pvc
-      // workspace pvc
-      deletePersistentVolumeClaim(String.format("%s-%s", NotebookUtils.PVC_PREFIX, name), namespace);
-      // user set pvc
-      deletePersistentVolumeClaim(String.format("%s-user-%s", NotebookUtils.PVC_PREFIX, name), namespace);
-
-      // configmap
-      if (StringUtils.isNoneBlank(OVERWRITE_JSON)) {
-        deleteConfigMap(namespace, String.format("%s-%s", NotebookUtils.OVERWRITE_PREFIX, name));
-      }
     } catch (ApiException e) {
-      throw new SubmarineRuntimeException(e.getCode(), e.getMessage());
+      apic.accept(e);
+    } finally {
+      if (notebook == null) {
+        // add metadata time info
+        notebookCR.getMetadata().setDeletionTimestamp(new DateTime());
+        // build notebook response
+        notebook = NotebookUtils.buildNotebookResponse(notebookCR);
+        notebook.setStatus(Notebook.Status.STATUS_NOT_FOUND.getValue());
+        notebook.setReason("The notebook instance is not found");
+      }
     }
+
+    // delete ingress route
+    deleteIngressRoute(namespace, name);
+
+    // delete pvc
+    // workspace pvc
+    deletePersistentVolumeClaim(String.format("%s-%s", NotebookUtils.PVC_PREFIX, name), namespace);
+    // user set pvc
+    deletePersistentVolumeClaim(String.format("%s-user-%s", NotebookUtils.PVC_PREFIX, name), namespace);
+
+    // configmap
+    if (StringUtils.isNoneBlank(OVERWRITE_JSON)) {
+      deleteConfigMap(namespace, String.format("%s-%s", NotebookUtils.OVERWRITE_PREFIX, name));
+    }
+
     return notebook;
   }
 
@@ -734,7 +759,7 @@ public class K8sSubmitter implements Submitter {
     }
   }
 
-  public void deletePersistentVolumeClaim(String pvcName, String namespace) throws ApiException {
+  public void deletePersistentVolumeClaim(String pvcName, String namespace) {
     /*
     This version of Kubernetes-client/java has bug here.
     It will trigger exception as in https://github.com/kubernetes-client/java/issues/86
@@ -748,7 +773,7 @@ public class K8sSubmitter implements Submitter {
       );
     } catch (ApiException e) {
       LOG.error("Exception when deleting persistent volume claim " + e.getMessage(), e);
-      throw e;
+      apic.accept(e);
     } catch (JsonSyntaxException e) {
       if (e.getCause() instanceof IllegalStateException) {
         IllegalStateException ise = (IllegalStateException) e.getCause();
@@ -803,7 +828,7 @@ public class K8sSubmitter implements Submitter {
               null, new V1DeleteOptionsBuilder().withApiVersion(IngressRoute.CRD_APIVERSION_V1).build());
     } catch (ApiException e) {
       LOG.error("K8s submitter: Delete Traefik custom resource object failed by " + e.getMessage(), e);
-      throw new SubmarineRuntimeException(e.getCode(), e.getMessage());
+      apic.accept(e);
     }
   }
 
@@ -862,14 +887,14 @@ public class K8sSubmitter implements Submitter {
   /**
    * Delete ConfigMap
    */
-  public void deleteConfigMap(String namespace, String name) throws ApiException {
+  public void deleteConfigMap(String namespace, String name) {
     try {
       coreApi.deleteNamespacedConfigMap(name, namespace,
               "true", null, null, null,
               null, null);
     } catch (ApiException e) {
       LOG.error("Exception when deleting config map " + e.getMessage(), e);
-      throw e;
+      apic.accept(e);
     }
   }
 
@@ -878,23 +903,14 @@ public class K8sSubmitter implements Submitter {
    */
   private void rollbackCreationConfigMap(String namespace, String ... names)
           throws SubmarineRuntimeException {
-    try {
-      for (String name : names) {
-        deleteConfigMap(namespace, name);
-      }
-    } catch (ApiException e) {
-      throw new SubmarineRuntimeException(e.getCode(), e.getMessage());
+    for (String name : names) {
+      deleteConfigMap(namespace, name);
     }
   }
 
   private void rollbackCreationPVC(String namespace, String ... pvcNames) {
-    try {
-      for (String pvcName : pvcNames) {
-        deletePersistentVolumeClaim(pvcName, namespace);
-      }
-    } catch (ApiException e) {
-      LOG.error("K8s submitter: delete persistent volume claim failed by {}, may cause some dirty data",
-          e.getMessage());
+    for (String pvcName : pvcNames) {
+      deletePersistentVolumeClaim(pvcName, namespace);
     }
   }
 
@@ -909,6 +925,13 @@ public class K8sSubmitter implements Submitter {
       throw new SubmarineRuntimeException(e.getCode(), e.getMessage());
     }
   }
+
+  // Add an exception Consumer, handle the problem that delete operation does not have the resource
+  final Consumer<ApiException> apic = e -> {
+    if (e.getCode() != 404) {
+      throw new SubmarineRuntimeException(e.getCode(), e.getMessage());
+    }
+  };
 
   private String getServerNamespace() {
     String namespace = "default";

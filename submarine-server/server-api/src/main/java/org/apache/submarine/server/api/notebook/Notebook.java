@@ -21,6 +21,8 @@ package org.apache.submarine.server.api.notebook;
 
 import org.apache.submarine.server.api.spec.NotebookSpec;
 
+import java.sql.Timestamp;
+
 /**
  * The notebook instance in submarine
  */
@@ -112,6 +114,7 @@ public class Notebook {
     STATUS_RUNNING("running"),
     STATUS_WAITING("waiting"),
     STATUS_TERMINATING("terminating"),
+    STATUS_NOT_FOUND("not_found"),
     STATUS_PULLING("pulling");
 
     private String value;
