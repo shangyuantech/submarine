@@ -78,6 +78,7 @@ import org.apache.submarine.server.submitter.k8s.model.NotebookCR;
 import org.apache.submarine.server.submitter.k8s.model.ingressroute.IngressRoute;
 import org.apache.submarine.server.submitter.k8s.model.ingressroute.IngressRouteSpec;
 import org.apache.submarine.server.submitter.k8s.model.ingressroute.SpecRoute;
+import org.apache.submarine.server.submitter.k8s.model.prometheus.pod.PodMonitor;
 import org.apache.submarine.server.submitter.k8s.model.pytorchjob.PyTorchJob;
 import org.apache.submarine.server.submitter.k8s.model.tfjob.TFJob;
 import org.apache.submarine.server.submitter.k8s.parser.ConfigmapSpecParser;
@@ -105,15 +106,22 @@ public class K8sSubmitter implements Submitter {
   private static final String ENV_NAMESPACE = "ENV_NAMESPACE";
 
   private static final String OVERWRITE_JSON;
+  private static final boolean PROMETHEUS_ENABLE;
 
   static {
     final SubmarineConfiguration conf = SubmarineConfiguration.getInstance();
     OVERWRITE_JSON = conf.getString(
-            SubmarineConfVars.ConfVars.SUBMARINE_NOTEBOOK_DEFAULT_OVERWRITE_JSON);
+        SubmarineConfVars.ConfVars.SUBMARINE_NOTEBOOK_DEFAULT_OVERWRITE_JSON);
+    PROMETHEUS_ENABLE = conf.getBoolean(
+        SubmarineConfVars.ConfVars.SUBMARINE_NOTEBOOK_PROMETHEUS_ENABLE);
   }
 
   // K8s API client for CRD
   private CustomObjectsApi api;
+
+  protected CustomObjectsApi getApi() {
+    return api;
+  }
 
   private CoreV1Api coreApi;
 
@@ -445,7 +453,7 @@ public class K8sSubmitter implements Submitter {
 
     // create notebook Traefik custom resource
     try {
-      createIngressRoute(notebookCR.getMetadata().getNamespace(), notebookCR.getMetadata().getName());
+      createIngressRoute(namespace, name);
     } catch (ApiException e) {
       LOG.error("K8s submitter: Create ingressroute for Notebook object failed by " +
           e.getMessage(), e);
@@ -454,6 +462,20 @@ public class K8sSubmitter implements Submitter {
       rollbackCreationPVC(namespace, workspacePvc, userPvc);
       throw new SubmarineRuntimeException(e.getCode(), "K8s submitter: ingressroute for Notebook " +
           "object failed by " + e.getMessage());
+    }
+
+    if (PROMETHEUS_ENABLE) {
+      try {
+        PodMonitor podMonitor = new PodMonitor(notebookCR);
+        podMonitor.createPodMonitor(api);
+      } catch (SubmarineRuntimeException e) {
+        rollbackCreationNotebook(notebookCR, namespace);
+        if (needOverwrite) rollbackCreationConfigMap(namespace, configmap);
+        rollbackCreationPVC(namespace, workspacePvc, userPvc);
+        deleteIngressRoute(namespace, name);
+        throw new SubmarineRuntimeException(e.getCode(), "K8s submitter: prometheus for Notebook " +
+                "object failed by " + e.getMessage());
+      }
     }
 
     return notebook;
@@ -528,6 +550,11 @@ public class K8sSubmitter implements Submitter {
     // configmap
     if (StringUtils.isNoneBlank(OVERWRITE_JSON)) {
       deleteConfigMap(namespace, String.format("%s-%s", NotebookUtils.OVERWRITE_PREFIX, name));
+    }
+
+    // prometheus
+    if (PROMETHEUS_ENABLE) {
+      new PodMonitor(notebookCR).deletePodMonitor(api);
     }
 
     return notebook;

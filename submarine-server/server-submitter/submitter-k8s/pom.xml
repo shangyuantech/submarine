@@ -95,6 +95,12 @@
       <version>${objenesis.version}</version>
     </dependency>
 
+    <dependency>
+      <groupId>io.kubernetes</groupId>
+      <artifactId>client-java-prometheus-operator-models</artifactId>
+      <version>10.0.2</version>
+    </dependency>
+
     <!--  Unit Tests  -->
     <dependency>
       <groupId>junit</groupId>
