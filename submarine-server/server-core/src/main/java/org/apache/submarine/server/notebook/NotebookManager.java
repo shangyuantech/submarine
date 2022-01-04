@@ -140,13 +140,8 @@ public class NotebookManager {
     for (Notebook nb : serviceNotebooks) {
       try {
         Notebook notebook = submitter.findNotebook(nb.getSpec());
-        notebook.setNotebookId(nb.getNotebookId());
-        notebook.setSpec(nb.getSpec());
-        notebook.setStarted(nb.isStarted());
-        if (notebook.getCreatedTime() == null) {
-          notebook.setCreatedTime(nb.getCreatedTime());
-        }
-        notebookList.add(notebook);
+        nb.rebuild(notebook);
+        notebookList.add(nb);
       } catch (SubmarineRuntimeException e) {
         LOG.error("Error when get notebook resource, skip this row!", e);
       }

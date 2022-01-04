@@ -155,6 +155,7 @@ public class NotebookService {
       notebook.setSpec(new Gson().fromJson(entity.getNotebookSpec(), NotebookSpec.class));
       notebook.setName(notebook.getSpec().getMeta().getName());
       notebook.setCreatedTime(RESOURCE_TIME_FORMAT.format(entity.getCreateTime()));
+      notebook.setStarted(entity.isStarted());
     } catch (Exception e) {
       LOG.error(e.getMessage(), e);
       throw new SubmarineRuntimeException("Unable to build notebook from entity");

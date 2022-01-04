@@ -81,4 +81,30 @@ export class NotebookService {
       })
     );
   }
+
+  startNotebook(id: string): Observable<NotebookInfo> {
+    const apiUrl = this.baseApi.getRestApi(`/v1/notebook/start/${id}`);
+    return this.httpClient.post<Rest<NotebookInfo>>(apiUrl, {}).pipe(
+      switchMap((res) => {
+        if (res.success) {
+          return of(res.result);
+        } else {
+          throw this.baseApi.createRequestError(res.message, res.code, apiUrl, 'post', id);
+        }
+      })
+    );
+  }
+
+  stopNotebook(id: string): Observable<NotebookInfo> {
+    const apiUrl = this.baseApi.getRestApi(`/v1/notebook/stop/${id}`);
+    return this.httpClient.post<Rest<NotebookInfo>>(apiUrl, {}).pipe(
+      switchMap((res) => {
+        if (res.success) {
+          return of(res.result);
+        } else {
+          throw this.baseApi.createRequestError(res.message, res.code, apiUrl, 'post', id);
+        }
+      })
+    );
+  }
 }

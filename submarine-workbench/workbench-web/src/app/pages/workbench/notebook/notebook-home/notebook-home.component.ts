@@ -82,4 +82,36 @@ export class NotebookHomeComponent implements OnInit, OnDestroy {
       },
     });
   }
+
+  onStartNotebook(id: string) {
+    this.notebookService.startNotebook(id).subscribe({
+      next: (result) => {},
+      error: (msg) => {
+        this.nzMessageService.error(`${msg}, please try again`, {
+          nzPauseOnHover: true,
+        });
+      },
+      complete: () => {
+        this.nzMessageService.info(`Starting Notebook...`, {
+          nzPauseOnHover: true,
+        });
+      },
+    });
+  }
+
+  onStopNotebook(id: string) {
+    this.notebookService.stopNotebook(id).subscribe({
+      next: (result) => {},
+      error: (msg) => {
+        this.nzMessageService.error(`${msg}, please try again`, {
+          nzPauseOnHover: true,
+        });
+      },
+      complete: () => {
+        this.nzMessageService.info(`Stopping Notebook...`, {
+          nzPauseOnHover: true,
+        });
+      },
+    });
+  }
 }

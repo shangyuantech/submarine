@@ -32,6 +32,8 @@ export class NotebookListComponent implements OnInit {
   @Input() notebookList: NotebookInfo[];
 
   @Output() deleteNotebook = new EventEmitter<string>();
+  @Output() startNotebook = new EventEmitter<string>();
+  @Output() stopNotebook = new EventEmitter<string>();
 
   statusColor: { [key: string]: string } = {
     creating: 'gold',
@@ -48,5 +50,13 @@ export class NotebookListComponent implements OnInit {
 
   onDeleteNotebook(id: string) {
     this.deleteNotebook.emit(id);
+  }
+
+  onStartNotebook(id: string) {
+    this.startNotebook.emit(id);
+  }
+
+  onStopNotebook(id: string) {
+    this.stopNotebook.emit(id);
   }
 }

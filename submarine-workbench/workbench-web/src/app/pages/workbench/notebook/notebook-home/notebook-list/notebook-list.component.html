@@ -62,6 +62,31 @@
       </td>
       <td>
         <a
+          *ngIf="data.started == true"
+          id="btn-stopNotebook{{ i }}"
+          nz-popconfirm
+          nzPlacement="left"
+          nzTitle="Are you sure you want to stop?"
+          nzCancelText="Cancel"
+          nzOkText="Ok"
+          (nzOnConfirm)="onStopNotebook(data.notebookId)"
+        >
+          Stop
+        </a>
+        <a
+          *ngIf="data.started == false"
+          id="btn-startNotebook{{ i }}"
+          nz-popconfirm
+          nzPlacement="left"
+          nzTitle="Are you sure you want to start?"
+          nzCancelText="Cancel"
+          nzOkText="Ok"
+          (nzOnConfirm)="onStartNotebook(data.notebookId)"
+        >
+          Start
+        </a>
+        <nz-divider nzType="vertical"></nz-divider>
+        <a
           id="btn-deleteNotebook{{ i }}"
           nz-popconfirm
           nzPlacement="left"

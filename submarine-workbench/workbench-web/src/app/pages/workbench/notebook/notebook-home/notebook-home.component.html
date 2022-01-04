@@ -33,6 +33,8 @@
   <submarine-notebook-list
     [notebookList]="notebookList"
     (deleteNotebook)="onDeleteNotebook($event)"
+    (startNotebook)="onStartNotebook($event)"
+    (stopNotebook)="onStopNotebook($event)"
   ></submarine-notebook-list>
   <submarine-notebook-form #form></submarine-notebook-form>
 </div>

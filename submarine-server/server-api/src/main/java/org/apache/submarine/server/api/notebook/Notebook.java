@@ -122,6 +122,7 @@ public class Notebook {
     STATUS_WAITING("waiting"),
     STATUS_TERMINATING("terminating"),
     STATUS_NOT_FOUND("not_found"),
+    STATUS_STOPPED("stopped"),
     STATUS_PULLING("pulling");
 
     private final String value;
@@ -164,7 +165,11 @@ public class Notebook {
         this.setSpec(notebook.getSpec());
       }
       if (notebook.getStatus() != null) {
-        this.setStatus(notebook.getStatus());
+        if (!notebook.isStarted() && Status.STATUS_NOT_FOUND.getValue().equals(notebook.getStatus())) {
+          this.setStatus(Status.STATUS_STOPPED.getValue());
+        } else {
+          this.setStatus(notebook.getStatus());
+        }
       }
       if (notebook.getReason() != null) {
         this.setReason(notebook.getReason());
