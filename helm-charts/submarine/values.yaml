@@ -30,3 +30,6 @@ storageClass:
   provisioner: k8s.io/minikube-hostpath
   # parameters describe volumes belonging to the storage class
   parameters:
+
+prometheus:
+  support: false

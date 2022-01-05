@@ -19,7 +19,11 @@
 
 package org.apache.submarine.server.notebook.database.entity;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import org.apache.submarine.server.database.entity.BaseEntity;
+import org.apache.submarine.server.workbench.database.utils.CustomJsonDateDeserializer;
+
+import java.util.Date;
 
 public class NotebookEntity extends BaseEntity {
   /*
@@ -28,6 +32,9 @@ public class NotebookEntity extends BaseEntity {
   private String notebookSpec;
 
   private boolean started = true;
+
+  @JsonDeserialize(using = CustomJsonDateDeserializer.class)
+  protected Date startTime = new Date();
 
   public NotebookEntity() {
   }
@@ -48,12 +55,21 @@ public class NotebookEntity extends BaseEntity {
     this.started = started;
   }
 
+  public Date getStartTime() {
+    return startTime;
+  }
+
+  public void setStartTime(Date startTime) {
+    this.startTime = startTime;
+  }
+
   @Override
   public String toString() {
     return "NotebookEntity{" +
         "notebookSpec='" + notebookSpec + '\'' +
         ", id='" + id + '\'' +
         ", started='" + started + '\'' +
+        ", startTime='" + startTime + '\'' +
         ", createBy='" + createBy + '\'' +
         ", createTime=" + createTime +
         ", updateBy='" + updateBy + '\'' +

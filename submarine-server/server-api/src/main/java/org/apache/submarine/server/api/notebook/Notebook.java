@@ -21,6 +21,8 @@ package org.apache.submarine.server.api.notebook;
 
 import org.apache.submarine.server.api.spec.NotebookSpec;
 
+import java.util.Date;
+
 /**
  * The notebook instance in submarine
  */
@@ -31,6 +33,7 @@ public class Notebook {
   private String url;
   private String status;
   private boolean started;
+  private Date startTime;
   private String reason;
   private String createdTime;
   private String deletedTime;
@@ -110,6 +113,14 @@ public class Notebook {
 
   public void setStarted(boolean started) {
     this.started = started;
+  }
+
+  public Date getStartTime() {
+    return startTime;
+  }
+
+  public void setStartTime(Date startTime) {
+    this.startTime = startTime;
   }
 
   public void setSpec(NotebookSpec spec) {

@@ -19,6 +19,7 @@
 
 package org.apache.submarine.server.notebook;
 
+import org.apache.submarine.commons.utils.SubmarineConfiguration;
 import org.apache.submarine.commons.utils.exception.SubmarineRuntimeException;
 import org.apache.submarine.server.SubmarineServer;
 import org.apache.submarine.server.SubmitterManager;
@@ -82,6 +83,7 @@ public class NotebookManager {
     checkNotebookSpec(spec);
     String lowerName = spec.getMeta().getName().toLowerCase();
     spec.getMeta().setName(lowerName);
+    spec.getMeta().setNamespace(SubmarineConfiguration.getDefaultNamespace());
     NotebookId notebookId = generateNotebookId();
 
     Map<String, String> labels = spec.getMeta().getLabels();
@@ -123,6 +125,23 @@ public class NotebookManager {
           || namespace.toLowerCase().equals(patchNotebook.getSpec().getMeta().getNamespace())) {
         notebook.rebuild(patchNotebook);
         notebookList.add(notebook);
+      }
+    }
+    return notebookList;
+  }
+
+  /**
+   * Get notebook which is started
+   */
+  public List<Notebook> listStartingNotebooks(int duration) throws SubmarineRuntimeException {
+    List<Notebook> notebookList = new ArrayList<>();
+    for (Notebook notebook : notebookService.selectStarted(duration)) {
+      try {
+        Notebook patchNotebook = submitter.findNotebook(notebook.getSpec());
+        notebook.rebuild(patchNotebook);
+        notebookList.add(notebook);
+      } catch (SubmarineRuntimeException e) {
+        LOG.error("Error when get notebook resource, skip this row!", e);
       }
     }
     return notebookList;

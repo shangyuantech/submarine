@@ -19,6 +19,8 @@
 
 package org.apache.submarine.server.api.spec;
 
+import org.apache.submarine.commons.utils.SubmarineConfiguration;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -40,13 +42,7 @@ public class ExperimentMeta {
   private List<String> tags = new ArrayList<>();
 
   public ExperimentMeta() {
-    namespace = "default";
-    /* The environment variable "ENV_NAMESPACE" will be set by submarine-operator. Hence, 
-     * if the user creates Submarine with Helm, the variable "namespace" will always be "default". 
-     */
-    if (System.getenv("ENV_NAMESPACE") != null) { 
-      namespace = System.getenv("ENV_NAMESPACE");
-    }
+    namespace = SubmarineConfiguration.getDefaultNamespace();
   }
 
   /**

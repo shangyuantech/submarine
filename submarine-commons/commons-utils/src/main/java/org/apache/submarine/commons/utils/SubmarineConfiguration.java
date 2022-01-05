@@ -42,7 +42,20 @@ public class SubmarineConfiguration extends XMLConfiguration {
 
   private static volatile SubmarineConfiguration conf;
 
-  private Map<String, String> properties = new HashMap<>();
+  private final Map<String, String> properties = new HashMap<>();
+
+  private static final String DEFAULT_NAMESPACE;
+
+  static {
+    String namespace = "default";
+    /* The environment variable "ENV_NAMESPACE" will be set by submarine-operator. Hence,
+     * if the user creates Submarine with Helm, the variable "namespace" will always be "default".
+     */
+    if (System.getenv("ENV_NAMESPACE") != null) {
+      namespace = System.getenv("ENV_NAMESPACE");
+    }
+    DEFAULT_NAMESPACE = namespace;
+  }
 
   private SubmarineConfiguration(URL url) throws ConfigurationException {
     setDelimiterParsingDisabled(true);
@@ -128,6 +141,10 @@ public class SubmarineConfiguration extends XMLConfiguration {
     }
 
     return submarineConfig;
+  }
+
+  public static String getDefaultNamespace() {
+    return DEFAULT_NAMESPACE;
   }
 
   public String getServerAddress() {

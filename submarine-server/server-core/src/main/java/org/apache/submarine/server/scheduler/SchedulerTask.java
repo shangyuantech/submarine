@@ -17,28 +17,32 @@
  * under the License.
  */
 
-package org.apache.submarine.server.submitter.k8s.model.prometheus.common;
+package org.apache.submarine.server.scheduler;
 
-import com.google.gson.annotations.SerializedName;
+import java.util.concurrent.TimeUnit;
 
-import java.util.ArrayList;
-import java.util.List;
+public interface SchedulerTask {
 
-public class NamespaceSelector {
+  /**
+   * Whether the task is enabled
+   */
+  boolean enable();
 
-  @SerializedName("matchNames")
-  private List<String> matchNames = new ArrayList<>();
+  /**
+   * The period between successive executions (minute)
+   */
+  long period();
 
-  public List<String> getMatchNames() {
-    return matchNames;
+  /**
+   * Run this task
+   */
+  void execute();
+
+  /**
+   * Default time unit
+   */
+  default TimeUnit getTimeUnit() {
+    return TimeUnit.MINUTES;
   }
 
-  public void setMatchNames(List<String> matchNames) {
-    this.matchNames = matchNames;
-  }
-
-  public NamespaceSelector addNamespace(String namespace) {
-    this.matchNames.add(namespace);
-    return this;
-  }
 }

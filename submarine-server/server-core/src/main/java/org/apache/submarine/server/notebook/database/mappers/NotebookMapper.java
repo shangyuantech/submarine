@@ -24,7 +24,10 @@ import org.apache.submarine.server.notebook.database.entity.NotebookEntity;
 import java.util.List;
 
 public interface NotebookMapper {
+
   List<NotebookEntity> selectAll();
+
+  List<NotebookEntity> selectStarted(int duration);
 
   NotebookEntity select(String id);
 

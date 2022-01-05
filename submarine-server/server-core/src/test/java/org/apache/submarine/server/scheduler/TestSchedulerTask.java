@@ -17,32 +17,24 @@
  * under the License.
  */
 
-package org.apache.submarine.server.submitter.k8s.model.prometheus.common;
+package org.apache.submarine.server.scheduler;
 
-public class Endpoint {
+import org.junit.Assert;
+import org.junit.Test;
 
-  private String path;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
-  private String port;
+public class TestSchedulerTask {
 
-  public Endpoint(String path, String port) {
-    this.path = path;
-    this.port = port;
-  }
+  public static final AtomicInteger count = new AtomicInteger(0);
 
-  public String getPath() {
-    return path;
-  }
+  @Test
+  public void testTaskManager() throws InterruptedException {
+    TaskManager taskManager = new TaskManager();
+    taskManager.scheduler();
 
-  public void setPath(String path) {
-    this.path = path;
-  }
-
-  public String getPort() {
-    return port;
-  }
-
-  public void setPort(String port) {
-    this.port = port;
+    TimeUnit.SECONDS.sleep(10);
+    Assert.assertTrue(count.get() > 0);
   }
 }

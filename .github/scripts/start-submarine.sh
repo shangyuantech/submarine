@@ -25,7 +25,9 @@ wait_times=$((wait_timeout / wait_interval))
 sudo ln -s /etc/apparmor.d/usr.sbin.mysqld /etc/apparmor.d/disable/
 sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.mysqld
 
-helm install --wait --set storageClass.provisioner=rancher.io/local-path --set storageClass.volumeBindingMode=WaitForFirstConsumer submarine ./helm-charts/submarine
+# add prometheus operator test
+kubectl apply -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/bundle.yaml
+helm install --wait --set prometheus.support=true --set storageClass.provisioner=rancher.io/local-path --set storageClass.volumeBindingMode=WaitForFirstConsumer submarine ./helm-charts/submarine
 kubectl apply -f ./submarine-cloud-v2/artifacts/examples/example-submarine.yaml
 
 # Polling waiting for the submarine to be in the RUNNING state

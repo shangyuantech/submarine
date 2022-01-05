@@ -258,6 +258,7 @@ CREATE TABLE `notebook` (
   `id` varchar(64) NOT NULL COMMENT 'Id of the notebook',
   `notebook_spec` text NOT NULL COMMENT 'Spec of the notebook',
   `started` tinyint(1) DEFAULT 1 COMMENT 'Whether notebook is started or stop, true is started',
+  `start_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT 'The time when the notebook started',
   `create_by` varchar(32) DEFAULT NULL COMMENT 'create user',
   `create_time` datetime DEFAULT NULL COMMENT 'create time',
   `update_by` varchar(32) DEFAULT NULL COMMENT 'last update user',

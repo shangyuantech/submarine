@@ -26,7 +26,7 @@ import com.coreos.monitoring.models.V1PodMonitorSpecSelector;
 import com.coreos.monitoring.models.V1ServiceMonitorSpecNamespaceSelector;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
-import org.apache.submarine.server.submitter.k8s.model.prometheus.pod.PodMonitor;
+import org.apache.submarine.server.submitter.k8s.model.prometheus.PodMonitor;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -64,7 +64,7 @@ public class PrometheusTest {
   }
 
   @Test
-  public void testCreatePodMonitor() {
+  public void testCreateAndReplacePodMonitor() {
     podMonitor.createPodMonitor(submitter.getApi());
     podMonitor.replacePodMonitor(submitter.getApi());
   }

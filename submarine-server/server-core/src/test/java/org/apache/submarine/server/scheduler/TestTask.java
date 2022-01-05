@@ -17,28 +17,35 @@
  * under the License.
  */
 
-package org.apache.submarine.server.submitter.k8s.model.prometheus.common;
+package org.apache.submarine.server.scheduler;
 
-import com.google.gson.annotations.SerializedName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
-public class Selector {
+public class TestTask implements SchedulerTask {
 
-  @SerializedName("matchLabels")
-  private Map<String, String> matchLabels = new LinkedHashMap<>();
+  private static final Logger LOG = LoggerFactory.getLogger(TestTask.class);
 
-  public Map<String, String> getMatchLabels() {
-    return matchLabels;
+  @Override
+  public boolean enable() {
+    return true;
   }
 
-  public void setMatchLabels(Map<String, String> matchLabels) {
-    this.matchLabels = matchLabels;
+  @Override
+  public long period() {
+    return 1;
   }
 
-  public Selector addMabel(String name, String value) {
-    this.matchLabels.put(name, value);
-    return this;
+  @Override
+  public void execute() {
+    LOG.info("run task!");
+    TestSchedulerTask.count.incrementAndGet();
+  }
+
+  @Override
+  public TimeUnit getTimeUnit() {
+    return TimeUnit.SECONDS;
   }
 }

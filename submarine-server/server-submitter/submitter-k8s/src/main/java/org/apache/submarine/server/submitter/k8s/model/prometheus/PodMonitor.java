@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.submarine.server.submitter.k8s.model.prometheus.pod;
+package org.apache.submarine.server.submitter.k8s.model.prometheus;
 
 import com.coreos.monitoring.models.V1PodMonitor;
 import com.coreos.monitoring.models.V1PodMonitorSpec;

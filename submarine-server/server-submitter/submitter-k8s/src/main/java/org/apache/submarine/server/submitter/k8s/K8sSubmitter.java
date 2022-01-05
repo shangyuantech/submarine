@@ -78,7 +78,7 @@ import org.apache.submarine.server.submitter.k8s.model.NotebookCR;
 import org.apache.submarine.server.submitter.k8s.model.ingressroute.IngressRoute;
 import org.apache.submarine.server.submitter.k8s.model.ingressroute.IngressRouteSpec;
 import org.apache.submarine.server.submitter.k8s.model.ingressroute.SpecRoute;
-import org.apache.submarine.server.submitter.k8s.model.prometheus.pod.PodMonitor;
+import org.apache.submarine.server.submitter.k8s.model.prometheus.PodMonitor;
 import org.apache.submarine.server.submitter.k8s.model.pytorchjob.PyTorchJob;
 import org.apache.submarine.server.submitter.k8s.model.tfjob.TFJob;
 import org.apache.submarine.server.submitter.k8s.parser.ConfigmapSpecParser;
@@ -102,8 +102,6 @@ public class K8sSubmitter implements Submitter {
 
   private static final String TF_JOB_SELECTOR_KEY = "tf-job-name=";
   private static final String PYTORCH_JOB_SELECTOR_KEY = "pytorch-job-name=";
-
-  private static final String ENV_NAMESPACE = "ENV_NAMESPACE";
 
   private static final String OVERWRITE_JSON;
   private static final boolean PROMETHEUS_ENABLE;
@@ -517,7 +515,8 @@ public class K8sSubmitter implements Submitter {
       // The exception that obtaining CRD resources is not necessarily because the CRD is deleted,
       // but maybe due to timeout or API error caused by network and other reasons.
       // Therefore, the status of the notebook should be set to a new enum NOTFOUND.
-      LOG.warn("Get error when submitter is finding notebook: {}", spec.getMeta().getName());
+      LOG.warn(String.format("Get error when submitter is finding notebook: %s",
+          spec.getMeta().getName()), e);
       if (notebook == null) {
         notebook = new Notebook();
       }
@@ -918,11 +917,7 @@ public class K8sSubmitter implements Submitter {
   }
 
   private String getServerNamespace() {
-    String namespace = "default";
-    if (System.getenv(ENV_NAMESPACE) != null) {
-      namespace = System.getenv(ENV_NAMESPACE);
-    }
-    return namespace;
+    return SubmarineConfiguration.getDefaultNamespace();
   }
 
   private enum ParseOp {

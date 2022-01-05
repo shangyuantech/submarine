@@ -22,6 +22,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.PropertyConfigurator;
 import org.apache.submarine.server.database.utils.HibernateUtil;
 import org.apache.submarine.server.rest.provider.YamlEntityProvider;
+import org.apache.submarine.server.scheduler.TaskManager;
 import org.apache.submarine.server.security.SecurityFactory;
 import org.apache.submarine.server.security.SecurityProvider;
 import org.apache.submarine.server.workbench.websocket.NotebookServer;
@@ -291,6 +292,10 @@ public class SubmarineServer extends ResourceConfig {
 
     final ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
     webapp.addServlet(servletHolder, "/ws/*");
+
+    // start scheduler tasks
+    final TaskManager taskManager = new TaskManager();
+    taskManager.scheduler();
   }
 
   private static void setupClusterServer() {

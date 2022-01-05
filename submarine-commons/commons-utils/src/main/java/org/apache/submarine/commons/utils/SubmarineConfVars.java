@@ -76,8 +76,13 @@ public class SubmarineConfVars {
     SUBMARINE_NOTEBOOK_DEFAULT_OVERWRITE_JSON("submarine.notebook.default.overwrite_json", ""),
 
     /* prometheus */
-    SUBMARINE_NOTEBOOK_PROMETHEUS_ENABLE("submarine.notebook.prometheus.enable", "false"),
+    SUBMARINE_NOTEBOOK_PROMETHEUS_ENABLE("submarine.notebook.prometheus.enable", false),
     SUBMARINE_NOTEBOOK_PROMETHEUS_LABELS("submarine.notebook.prometheus.labels", ""),
+
+    /* scheduler */
+    SUBMARINE_SERVER_TASKS_AUTOSTOP_ENABLE("submarine.server.tasks.autostop.enable", false),
+    SUBMARINE_SERVER_TASKS_AUTOSTOP_DURATION("submarine.server.tasks.autostop.duration", 30),
+    SUBMARINE_SERVER_TASKS_AUTOSTOP_PROMETHEUS_URL("submarine.server.tasks.autostop.prometheus.url", ""),
 
     WORKBENCH_WEBSOCKET_MAX_TEXT_MESSAGE_SIZE(
         "workbench.websocket.max.text.message.size", "1024000"),
