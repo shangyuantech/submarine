@@ -65,12 +65,12 @@ public class PrometheusTest {
 
   @Test
   public void testCreateAndReplacePodMonitor() {
-    podMonitor.createPodMonitor(submitter.getApi());
-    podMonitor.replacePodMonitor(submitter.getApi());
+    podMonitor.create(submitter.getK8sApi());
+    podMonitor.replace(submitter.getK8sApi());
   }
 
   @Test
   public void testDeletePodMonitor() {
-    podMonitor.deletePodMonitor(submitter.getApi());
+    podMonitor.delete(submitter.getK8sApi());
   }
 }

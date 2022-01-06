@@ -19,10 +19,28 @@
 
 package org.apache.submarine.server.submitter.k8s.model.ingressroute;
 
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.annotations.SerializedName;
+import io.kubernetes.client.openapi.ApiException;
+import io.kubernetes.client.openapi.models.V1DeleteOptionsBuilder;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
+import org.apache.submarine.commons.utils.exception.SubmarineRuntimeException;
+import org.apache.submarine.server.submitter.k8s.K8sApi;
+import org.apache.submarine.server.submitter.k8s.K8sSubmitter;
+import org.apache.submarine.server.submitter.k8s.model.K8sResource;
+import org.apache.submarine.server.submitter.k8s.util.OwnerReferenceUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class IngressRoute {
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+public class IngressRoute implements K8sResource {
+
+  private static final Logger LOG = LoggerFactory.getLogger(IngressRoute.class);
+
   public static final String CRD_INGRESSROUTE_GROUP_V1 = "traefik.containo.us";
   public static final String CRD_INGRESSROUTE_VERSION_V1 = "v1alpha1";
   public static final String CRD_APIVERSION_V1 = CRD_INGRESSROUTE_GROUP_V1 +
@@ -54,6 +72,37 @@ public class IngressRoute {
     setPlural(CRD_INGRESSROUTE_PLURAL_V1);
     setGroup(CRD_INGRESSROUTE_GROUP_V1);
     setVersion(CRD_INGRESSROUTE_VERSION_V1);
+  }
+
+  public IngressRoute(String namespace, String name) {
+    this();
+    V1ObjectMeta meta = new V1ObjectMeta();
+    meta.setName(name);
+    meta.setNamespace(namespace);
+    meta.setOwnerReferences(OwnerReferenceUtils.getOwnerReference());
+    this.setMetadata(meta);
+    this.setSpec(parseIngressRouteSpec(meta.getNamespace(), meta.getName()));
+  }
+
+  private IngressRouteSpec parseIngressRouteSpec(String namespace, String name) {
+    IngressRouteSpec spec = new IngressRouteSpec();
+    Set<String> entryPoints = new HashSet<>();
+    entryPoints.add("web");
+    spec.setEntryPoints(entryPoints);
+
+    SpecRoute route = new SpecRoute();
+    route.setKind("Rule");
+    route.setMatch("PathPrefix(`/notebook/" + namespace + "/" + name + "/`)");
+    Set<Map<String, Object>> serviceMap = new HashSet<>();
+    Map<String, Object> service = new HashMap<>();
+    service.put("name", name);
+    service.put("port", 80);
+    serviceMap.add(service);
+    route.setServices(serviceMap);
+    Set<SpecRoute> routes = new HashSet<>();
+    routes.add(route);
+    spec.setRoutes(routes);
+    return spec;
   }
 
   public String getApiVersion() {
@@ -110,5 +159,43 @@ public class IngressRoute {
 
   public void setSpec(IngressRouteSpec spec) {
     this.spec = spec;
+  }
+
+  @Override
+  public IngressRoute read(K8sApi api) {
+    return this;
+  }
+
+  @Override
+  public Object create(K8sApi api) {
+    try {
+      return api.getApi().createNamespacedCustomObject(
+              this.getGroup(), this.getVersion(),
+              this.getMetadata().getNamespace(),
+              this.getPlural(), this, "true", null, null);
+    } catch (ApiException e) {
+      LOG.error("K8s submitter: Create Traefik custom resource object failed by " + e.getMessage(), e);
+      throw new SubmarineRuntimeException(e.getCode(), e.getMessage());
+    } catch (JsonSyntaxException e) {
+      LOG.error("K8s submitter: parse response object failed by " + e.getMessage(), e);
+      throw new SubmarineRuntimeException(500, "K8s Submitter parse upstream response failed.");
+    }
+  }
+
+  @Override
+  public Object replace(K8sApi api) {
+    return null;
+  }
+
+  @Override
+  public Object delete(K8sApi api) {
+    try {
+      return api.getApi().deleteNamespacedCustomObject(getGroup(), getVersion(),
+          this.getMetadata().getNamespace(), getPlural(), this.getMetadata().getName(),
+          null, null, null,
+          null, new V1DeleteOptionsBuilder().withApiVersion(IngressRoute.CRD_APIVERSION_V1).build());
+    } catch (ApiException e) {
+      return K8sSubmitter.API_EXCEPTION_404_CONSUMER.apply(e);
+    }
   }
 }

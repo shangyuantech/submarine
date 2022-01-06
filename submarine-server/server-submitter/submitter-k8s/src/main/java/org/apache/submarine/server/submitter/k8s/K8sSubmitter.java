@@ -21,14 +21,15 @@ package org.apache.submarine.server.submitter.k8s;
 
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
@@ -40,13 +41,11 @@ import io.kubernetes.client.openapi.JSON;
 import io.kubernetes.client.openapi.apis.AppsV1Api;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.apis.CustomObjectsApi;
-import io.kubernetes.client.openapi.models.V1ConfigMap;
 import io.kubernetes.client.openapi.models.V1DeleteOptionsBuilder;
 import io.kubernetes.client.openapi.models.V1Deployment;
 import io.kubernetes.client.openapi.models.CoreV1Event;
 import io.kubernetes.client.openapi.models.CoreV1EventList;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
-import io.kubernetes.client.openapi.models.V1PersistentVolumeClaim;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
 import io.kubernetes.client.openapi.models.V1Status;
@@ -75,16 +74,16 @@ import org.apache.submarine.server.api.spec.ExperimentSpec;
 import org.apache.submarine.server.api.spec.NotebookSpec;
 import org.apache.submarine.server.submitter.k8s.model.MLJob;
 import org.apache.submarine.server.submitter.k8s.model.NotebookCR;
+import org.apache.submarine.server.submitter.k8s.model.common.Configmap;
+import org.apache.submarine.server.submitter.k8s.model.K8sResource;
+import org.apache.submarine.server.submitter.k8s.model.common.NullResource;
+import org.apache.submarine.server.submitter.k8s.model.common.PersistentVolumeClaim;
 import org.apache.submarine.server.submitter.k8s.model.ingressroute.IngressRoute;
-import org.apache.submarine.server.submitter.k8s.model.ingressroute.IngressRouteSpec;
-import org.apache.submarine.server.submitter.k8s.model.ingressroute.SpecRoute;
 import org.apache.submarine.server.submitter.k8s.model.prometheus.PodMonitor;
 import org.apache.submarine.server.submitter.k8s.model.pytorchjob.PyTorchJob;
 import org.apache.submarine.server.submitter.k8s.model.tfjob.TFJob;
-import org.apache.submarine.server.submitter.k8s.parser.ConfigmapSpecParser;
 import org.apache.submarine.server.submitter.k8s.parser.ExperimentSpecParser;
 import org.apache.submarine.server.submitter.k8s.parser.NotebookSpecParser;
-import org.apache.submarine.server.submitter.k8s.parser.VolumeSpecParser;
 import org.apache.submarine.server.submitter.k8s.util.MLJobConverter;
 import org.apache.submarine.server.submitter.k8s.util.NotebookUtils;
 import org.apache.submarine.server.submitter.k8s.util.OwnerReferenceUtils;
@@ -96,12 +95,23 @@ import org.slf4j.LoggerFactory;
  * JobSubmitter for Kubernetes Cluster.
  */
 public class K8sSubmitter implements Submitter {
+
   private static final Logger LOG = LoggerFactory.getLogger(K8sSubmitter.class);
 
   private static final String KUBECONFIG_ENV = "KUBECONFIG";
 
   private static final String TF_JOB_SELECTOR_KEY = "tf-job-name=";
   private static final String PYTORCH_JOB_SELECTOR_KEY = "pytorch-job-name=";
+
+  // Add an exception Consumer, handle the problem that delete operation does not have the resource
+  public static final Function<ApiException, Object> API_EXCEPTION_404_CONSUMER = e -> {
+    if (e.getCode() != 404) {
+      LOG.error("When submit resource to k8s get ApiException with code " + e.getCode(), e);
+      throw new SubmarineRuntimeException(e.getCode(), e.getMessage());
+    } else {
+      return null;
+    }
+  };
 
   private static final String OVERWRITE_JSON;
   private static final boolean PROMETHEUS_ENABLE;
@@ -117,15 +127,18 @@ public class K8sSubmitter implements Submitter {
   // K8s API client for CRD
   private CustomObjectsApi api;
 
-  protected CustomObjectsApi getApi() {
-    return api;
-  }
-
   private CoreV1Api coreApi;
 
   private AppsV1Api appsV1Api;
 
   private ApiClient client = null;
+
+  private K8sApi k8sApi;
+
+  @VisibleForTesting
+  protected K8sApi getK8sApi() {
+    return k8sApi;
+  }
 
   public K8sSubmitter() {
   }
@@ -158,9 +171,11 @@ public class K8sSubmitter implements Submitter {
     if (coreApi == null) {
       coreApi = new CoreV1Api(client);
     }
-
     if (appsV1Api == null) {
       appsV1Api = new AppsV1Api();
+    }
+    if (k8sApi == null) {
+      k8sApi = new K8sApi(api, coreApi, appsV1Api);
     }
 
     try {
@@ -396,10 +411,7 @@ public class K8sSubmitter implements Submitter {
 
   @Override
   public Notebook createNotebook(NotebookSpec spec) throws SubmarineRuntimeException {
-    Notebook notebook;
     final String name = spec.getMeta().getName();
-    final String scName = NotebookUtils.SC_NAME;
-    final String host = NotebookUtils.HOST_PATH;
     final String workspacePvc = String.format("%s-%s", NotebookUtils.PVC_PREFIX, name);
     final String userPvc = String.format("%s-user-%s", NotebookUtils.PVC_PREFIX, name);
     final String configmap = String.format("%s-%s", NotebookUtils.OVERWRITE_PREFIX, name);
@@ -407,76 +419,60 @@ public class K8sSubmitter implements Submitter {
 
     // parse notebook custom resource
     NotebookCR notebookCR = new NotebookCR(spec, namespace);
-
-    // create persistent volume claim
-    try {
-      // workspace
-      createPersistentVolumeClaim(workspacePvc, namespace, scName, NotebookUtils.STORAGE);
-      // user setting
-      createPersistentVolumeClaim(userPvc, namespace, scName, NotebookUtils.DEFAULT_USER_STORAGE);
-    } catch (ApiException e) {
-      LOG.error("K8s submitter: Create persistent volume claim for Notebook object failed by " +
-          e.getMessage(), e);
-      throw new SubmarineRuntimeException(e.getCode(), "K8s submitter: Create persistent volume claim for " +
-          "Notebook object failed by " + e.getMessage());
+    // overwrite.json configmap
+    Configmap overwriteJson = null;
+    if (StringUtils.isNotBlank(OVERWRITE_JSON)) {
+      overwriteJson = new Configmap(namespace, configmap,
+          NotebookUtils.DEFAULT_OVERWRITE_FILE_NAME, OVERWRITE_JSON);
     }
-
-    // create configmap if needed
-    boolean needOverwrite = StringUtils.isNotBlank(OVERWRITE_JSON);
-    if (needOverwrite) {
-      try {
-        createConfigMap(configmap, namespace, NotebookUtils.DEFAULT_OVERWRITE_FILE_NAME, OVERWRITE_JSON);
-      } catch (JsonSyntaxException e) {
-        LOG.error("K8s submitter: parse response object failed by " + e.getMessage(), e);
-        rollbackCreationPVC(namespace, workspacePvc, userPvc);
-        throw new SubmarineRuntimeException(500, "K8s Submitter parse upstream response failed.");
-      } catch (ApiException e) {
-        LOG.error("K8s submitter: parse Notebook object failed by " + e.getMessage(), e);
-        rollbackCreationPVC(namespace, workspacePvc, userPvc);
-        throw new SubmarineRuntimeException(e.getCode(), "K8s submitter: parse Notebook object failed by " +
-                e.getMessage());
-      }
-    }
-
-    // create notebook custom resource
-    try {
-      notebook = notebookCR.createNotebookCRD(api);
-    } catch (SubmarineRuntimeException e) {
-      LOG.error("K8s submitter: parse Notebook object failed by " + e.getMessage(), e);
-      if (needOverwrite) rollbackCreationConfigMap(namespace, configmap);
-      rollbackCreationPVC(namespace, workspacePvc, userPvc);
-      throw new SubmarineRuntimeException(e.getCode(), "K8s submitter: parse Notebook object failed by " +
-          e.getMessage());
-    }
-
-    // create notebook Traefik custom resource
-    try {
-      createIngressRoute(namespace, name);
-    } catch (ApiException e) {
-      LOG.error("K8s submitter: Create ingressroute for Notebook object failed by " +
-          e.getMessage(), e);
-      rollbackCreationNotebook(notebookCR, namespace);
-      if (needOverwrite) rollbackCreationConfigMap(namespace, configmap);
-      rollbackCreationPVC(namespace, workspacePvc, userPvc);
-      throw new SubmarineRuntimeException(e.getCode(), "K8s submitter: ingressroute for Notebook " +
-          "object failed by " + e.getMessage());
-    }
-
+    // workspace pvc
+    // user setting pvc
+    PersistentVolumeClaim workspace = new PersistentVolumeClaim(namespace, workspacePvc,
+        NotebookUtils.STORAGE);
+    PersistentVolumeClaim userset = new PersistentVolumeClaim(namespace, userPvc,
+        NotebookUtils.DEFAULT_USER_STORAGE);
+    // ingress route
+    IngressRoute ingressRoute = new IngressRoute(namespace, name);
+    // pod monitor
+    PodMonitor podMonitor = null;
     if (PROMETHEUS_ENABLE) {
-      try {
-        PodMonitor podMonitor = new PodMonitor(notebookCR);
-        podMonitor.createPodMonitor(api);
-      } catch (SubmarineRuntimeException e) {
-        rollbackCreationNotebook(notebookCR, namespace);
-        if (needOverwrite) rollbackCreationConfigMap(namespace, configmap);
-        rollbackCreationPVC(namespace, workspacePvc, userPvc);
-        deleteIngressRoute(namespace, name);
-        throw new SubmarineRuntimeException(e.getCode(), "K8s submitter: prometheus for Notebook " +
-                "object failed by " + e.getMessage());
-      }
+      podMonitor = new PodMonitor(notebookCR);
     }
 
-    return notebook;
+    // commit resources/CRD with transaction
+    List<Object> values = resourceTransaction(workspace, userset, overwriteJson, notebookCR,
+        ingressRoute, podMonitor);
+
+    return (Notebook) values.get(3);
+  }
+
+  /**
+   * Commit resources with transaction
+   * @return committed return objects
+   */
+  public List<Object> resourceTransaction(K8sResource ... resources) {
+    Map<K8sResource, Object> commits = new LinkedHashMap<>();
+    try {
+      for (K8sResource resource : resources) {
+        if (resources != null) {
+          commits.put(resource, resource.create(k8sApi));
+        } else {
+          commits.put(new NullResource(), null);
+        }
+      }
+      return new ArrayList<>(commits.values());
+    } catch (Exception e) {
+      if (!commits.isEmpty()) {
+        // Rollback is performed in the reverse order of commits
+        List<K8sResource> rollbacks = new ArrayList<>(commits.keySet());
+        for (int i = rollbacks.size() - 1; i >= 0; i--) {
+          K8sResource rollback = rollbacks.get(i);
+          LOG.debug("Rollback resources {}/{}", rollback.getKind(), rollback.getMetadata().getName());
+          rollbacks.get(i).delete(k8sApi);
+        }
+      }
+      throw e;
+    }
   }
 
   @Override
@@ -535,25 +531,27 @@ public class K8sSubmitter implements Submitter {
     NotebookCR notebookCR = new NotebookCR(spec, namespace);
 
     // delete crd
-    Notebook notebook = notebookCR.deleteNotebookCRD(api);
+    Notebook notebook = notebookCR.delete(k8sApi);
 
     // delete ingress route
-    deleteIngressRoute(namespace, name);
+    new IngressRoute(namespace, name).delete(k8sApi);
 
     // delete pvc
     // workspace pvc
-    deletePersistentVolumeClaim(String.format("%s-%s", NotebookUtils.PVC_PREFIX, name), namespace);
+    new PersistentVolumeClaim(namespace, String.format("%s-%s", NotebookUtils.PVC_PREFIX, name),
+        NotebookUtils.STORAGE).delete(k8sApi);
     // user set pvc
-    deletePersistentVolumeClaim(String.format("%s-user-%s", NotebookUtils.PVC_PREFIX, name), namespace);
+    new PersistentVolumeClaim(namespace, String.format("%s-user-%s", NotebookUtils.PVC_PREFIX, name),
+        NotebookUtils.DEFAULT_USER_STORAGE).delete(k8sApi);
 
     // configmap
     if (StringUtils.isNoneBlank(OVERWRITE_JSON)) {
-      deleteConfigMap(namespace, String.format("%s-%s", NotebookUtils.OVERWRITE_PREFIX, name));
+      new Configmap(namespace, String.format("%s-%s", NotebookUtils.OVERWRITE_PREFIX, name)).delete(k8sApi);
     }
 
     // prometheus
     if (PROMETHEUS_ENABLE) {
-      new PodMonitor(notebookCR).deletePodMonitor(api);
+      new PodMonitor(notebookCR).delete(k8sApi);
     }
 
     return notebook;
@@ -735,50 +733,6 @@ public class K8sSubmitter implements Submitter {
     }
   }
 
-  public void createPersistentVolumeClaim(String pvcName, String namespace, String scName, String storage)
-      throws ApiException {
-    V1PersistentVolumeClaim pvc = VolumeSpecParser.parsePersistentVolumeClaim(pvcName, scName, storage);
-    pvc.getMetadata().setOwnerReferences(OwnerReferenceUtils.getOwnerReference());
-    try {
-      V1PersistentVolumeClaim result = coreApi.createNamespacedPersistentVolumeClaim(
-          namespace, pvc, "true", null, null
-      );
-    } catch (ApiException e) {
-      LOG.error("Exception when creating persistent volume claim " + e.getMessage(), e);
-      throw e;
-    }
-  }
-
-  public void deletePersistentVolumeClaim(String pvcName, String namespace) {
-    /*
-    This version of Kubernetes-client/java has bug here.
-    It will trigger exception as in https://github.com/kubernetes-client/java/issues/86
-    but it can still work fine and delete the PVC
-    */
-    try {
-      V1PersistentVolumeClaim result = coreApi.deleteNamespacedPersistentVolumeClaim(
-          pvcName, namespace, "true",
-          null, null, null,
-          null, null
-      );
-    } catch (ApiException e) {
-      LOG.error("Exception when deleting persistent volume claim " + e.getMessage(), e);
-      NotebookUtils.API_EXCEPTION_404_CONSUMER.accept(e);
-    } catch (JsonSyntaxException e) {
-      if (e.getCause() instanceof IllegalStateException) {
-        IllegalStateException ise = (IllegalStateException) e.getCause();
-        if (ise.getMessage() != null && ise.getMessage().contains("Expected a string but was BEGIN_OBJECT")) {
-          LOG.debug("Catching exception because of issue " +
-              "https://github.com/kubernetes-client/java/issues/86", e);
-        } else {
-          throw e;
-        }
-      } else {
-        throw e;
-      }
-    }
-  }
-
   private String getJobLabelSelector(ExperimentSpec experimentSpec) {
     if (experimentSpec.getMeta().getFramework()
         .equalsIgnoreCase(ExperimentMeta.SupportedMLFramework.TENSORFLOW.getName())) {
@@ -786,61 +740,6 @@ public class K8sSubmitter implements Submitter {
     } else {
       return PYTORCH_JOB_SELECTOR_KEY + experimentSpec.getMeta().getExperimentId();
     }
-  }
-
-  private void createIngressRoute(String namespace, String name) throws ApiException {
-    try {
-      IngressRoute ingressRoute = new IngressRoute();
-      V1ObjectMeta meta = new V1ObjectMeta();
-      meta.setName(name);
-      meta.setNamespace(namespace);
-      meta.setOwnerReferences(OwnerReferenceUtils.getOwnerReference());
-      ingressRoute.setMetadata(meta);
-      ingressRoute.setSpec(parseIngressRouteSpec(meta.getNamespace(), meta.getName()));
-      api.createNamespacedCustomObject(
-          ingressRoute.getGroup(), ingressRoute.getVersion(),
-          ingressRoute.getMetadata().getNamespace(),
-          ingressRoute.getPlural(), ingressRoute, "true", null, null);
-    } catch (ApiException e) {
-      LOG.error("K8s submitter: Create Traefik custom resource object failed by " + e.getMessage(), e);
-      throw new SubmarineRuntimeException(e.getCode(), e.getMessage());
-    } catch (JsonSyntaxException e) {
-      LOG.error("K8s submitter: parse response object failed by " + e.getMessage(), e);
-      throw new SubmarineRuntimeException(500, "K8s Submitter parse upstream response failed.");
-    }
-  }
-
-  private void deleteIngressRoute(String namespace, String name) {
-    try {
-      api.deleteNamespacedCustomObject(
-          IngressRoute.CRD_INGRESSROUTE_GROUP_V1, IngressRoute.CRD_INGRESSROUTE_VERSION_V1,
-          namespace, IngressRoute.CRD_INGRESSROUTE_PLURAL_V1, name, null, null, null,
-              null, new V1DeleteOptionsBuilder().withApiVersion(IngressRoute.CRD_APIVERSION_V1).build());
-    } catch (ApiException e) {
-      LOG.error("K8s submitter: Delete Traefik custom resource object failed by " + e.getMessage(), e);
-      NotebookUtils.API_EXCEPTION_404_CONSUMER.accept(e);
-    }
-  }
-
-  private IngressRouteSpec parseIngressRouteSpec(String namespace, String name) {
-    IngressRouteSpec spec = new IngressRouteSpec();
-    Set<String> entryPoints = new HashSet<>();
-    entryPoints.add("web");
-    spec.setEntryPoints(entryPoints);
-
-    SpecRoute route = new SpecRoute();
-    route.setKind("Rule");
-    route.setMatch("PathPrefix(`/notebook/" + namespace + "/" + name + "/`)");
-    Set<Map<String, Object>> serviceMap = new HashSet<>();
-    Map<String, Object> service = new HashMap<>();
-    service.put("name", name);
-    service.put("port", 80);
-    serviceMap.add(service);
-    route.setServices(serviceMap);
-    Set<SpecRoute> routes = new HashSet<>();
-    routes.add(route);
-    spec.setRoutes(routes);
-    return spec;
   }
 
   private SeldonDeployment parseServeSpec(ServeSpec spec) throws SubmarineRuntimeException {
@@ -859,63 +758,6 @@ public class K8sSubmitter implements Submitter {
     return seldonDeployment;
   }
 
-  /**
-   * Create ConfigMap with values (key1, value1, key2, value2, ...)
-   */
-  public void createConfigMap(String name, String namespace, String ... values)
-          throws ApiException {
-    V1ConfigMap configMap = ConfigmapSpecParser.parseConfigMap(name, values);
-    configMap.getMetadata().setOwnerReferences(OwnerReferenceUtils.getOwnerReference());
-    try {
-      coreApi.createNamespacedConfigMap(namespace, configMap, "true", null, null);
-    } catch (ApiException e) {
-      LOG.error("Exception when creating configmap " + e.getMessage(), e);
-      throw e;
-    }
-  }
-
-  /**
-   * Delete ConfigMap
-   */
-  public void deleteConfigMap(String namespace, String name) {
-    try {
-      coreApi.deleteNamespacedConfigMap(name, namespace,
-              "true", null, null, null,
-              null, null);
-    } catch (ApiException e) {
-      LOG.error("Exception when deleting config map " + e.getMessage(), e);
-      NotebookUtils.API_EXCEPTION_404_CONSUMER.accept(e);
-    }
-  }
-
-  /**
-   * Rollback to delete ConfigMap
-   */
-  private void rollbackCreationConfigMap(String namespace, String ... names)
-          throws SubmarineRuntimeException {
-    for (String name : names) {
-      deleteConfigMap(namespace, name);
-    }
-  }
-
-  private void rollbackCreationPVC(String namespace, String ... pvcNames) {
-    for (String pvcName : pvcNames) {
-      deletePersistentVolumeClaim(pvcName, namespace);
-    }
-  }
-
-  private void rollbackCreationNotebook(NotebookCR notebookCR, String namespace)
-      throws SubmarineRuntimeException {
-    try {
-      Object object = api.deleteNamespacedCustomObject(notebookCR.getGroup(), notebookCR.getVersion(),
-          namespace, notebookCR.getPlural(),
-          notebookCR.getMetadata().getName(), null, null, null, null,
-          new V1DeleteOptionsBuilder().withApiVersion(notebookCR.getApiVersion()).build());
-    } catch (ApiException e) {
-      throw new SubmarineRuntimeException(e.getCode(), e.getMessage());
-    }
-  }
-
   private String getServerNamespace() {
     return SubmarineConfiguration.getDefaultNamespace();
   }
@@ -930,7 +772,7 @@ public class K8sSubmitter implements Submitter {
     String namespace = getServerNamespace();
     NotebookCR notebookCR = new NotebookCR(spec, namespace);
     // create crd
-    return notebookCR.createNotebookCRD(api, true);
+    return notebookCR.create(k8sApi, true);
   }
 
   @Override
@@ -938,6 +780,6 @@ public class K8sSubmitter implements Submitter {
     String namespace = getServerNamespace();
     NotebookCR notebookCR = new NotebookCR(spec, namespace);
     // delete crd
-    return notebookCR.deleteNotebookCRD(api);
+    return notebookCR.delete(k8sApi);
   }
 }

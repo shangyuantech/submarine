@@ -27,7 +27,7 @@ import org.apache.submarine.server.api.spec.NotebookPodSpec;
 import org.apache.submarine.server.api.spec.NotebookSpec;
 import org.apache.submarine.server.submitter.k8s.model.NotebookCR;
 import org.apache.submarine.server.submitter.k8s.model.NotebookCRSpec;
-import org.apache.submarine.server.submitter.k8s.parser.ConfigmapSpecParser;
+import org.apache.submarine.server.submitter.k8s.model.common.Configmap;
 import org.apache.submarine.server.submitter.k8s.parser.NotebookSpecParser;
 import org.junit.Assert;
 import org.junit.Test;
@@ -91,13 +91,13 @@ public class NotebookSpecParserTest extends SpecBuilder {
   public void testConfigMap() {
     String overwriteJson = "{ \"@jupyterlab/translation-extension:plugin\": " +
             "{ \"locale\": \"zh_CN\" } }";
-    V1ConfigMap configMap = ConfigmapSpecParser.parseConfigMap("test",
+    Configmap configMap = new Configmap("default", "test",
             "overwrite.json", overwriteJson);
     Map<String, String> data = configMap.getData();
     Assert.assertEquals(data.size(), 1);
     Assert.assertEquals(data.get("overwrite.json"), overwriteJson);
 
-    V1ConfigMap configMap2 = ConfigmapSpecParser.parseConfigMap("test", data);
+    V1ConfigMap configMap2 = new Configmap("default", "test", data);
     Map<String, String> data2 = configMap2.getData();
     Assert.assertEquals(data2.size(), 1);
     Assert.assertEquals(data2.get("overwrite.json"), overwriteJson);

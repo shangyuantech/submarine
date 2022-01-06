@@ -25,23 +25,24 @@ import com.coreos.monitoring.models.V1PodMonitorSpecPodMetricsEndpoints;
 import com.coreos.monitoring.models.V1PodMonitorSpecSelector;
 import com.coreos.monitoring.models.V1ServiceMonitorSpecNamespaceSelector;
 import io.kubernetes.client.openapi.ApiException;
-import io.kubernetes.client.openapi.apis.CustomObjectsApi;
 import io.kubernetes.client.openapi.models.V1DeleteOptionsBuilder;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.submarine.commons.utils.SubmarineConfVars;
 import org.apache.submarine.commons.utils.SubmarineConfiguration;
 import org.apache.submarine.commons.utils.exception.SubmarineRuntimeException;
+import org.apache.submarine.server.submitter.k8s.K8sApi;
+import org.apache.submarine.server.submitter.k8s.K8sSubmitter;
+import org.apache.submarine.server.submitter.k8s.model.K8sResource;
 import org.apache.submarine.server.submitter.k8s.model.NotebookCR;
 import org.apache.submarine.server.submitter.k8s.util.JsonUtils;
-import org.apache.submarine.server.submitter.k8s.util.NotebookUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class PodMonitor extends V1PodMonitor {
+public class PodMonitor extends V1PodMonitor implements K8sResource {
 
   private static final Logger LOG = LoggerFactory.getLogger(PodMonitor.class);
 
@@ -102,12 +103,17 @@ public class PodMonitor extends V1PodMonitor {
 
   private transient String plural;
 
+  @Override
+  public PodMonitor read(K8sApi api) {
+    return this;
+  }
+
   /**
    * Reset Metadata so that we can replace PodMonitor
    */
-  private void resetMeta(CustomObjectsApi api) {
+  public void resetMeta(K8sApi api) {
     try {
-      Object object = api.getNamespacedCustomObject(this.getGroup(), this.getVersion(),
+      Object object = api.getApi().getNamespacedCustomObject(this.getGroup(), this.getVersion(),
           this.getMetadata().getNamespace(), this.getPlural(), this.getMetadata().getName());
       if (object != null) {
         String jsonString = JsonUtils.toJson(((Map<String, Object>) object).get("metadata"));
@@ -125,14 +131,15 @@ public class PodMonitor extends V1PodMonitor {
   /**
    * Create PodMonitor
    */
-  public void createPodMonitor(CustomObjectsApi api) {
+  @Override
+  public Object create(K8sApi api) {
     try {
-      api.createNamespacedCustomObject(this.getGroup(), this.getVersion(),
+      return api.getApi().createNamespacedCustomObject(this.getGroup(), this.getVersion(),
           this.getMetadata().getNamespace(), this.getPlural(), this, "true", null, null);
     } catch (ApiException e) {
       if (e.getCode() == 409) {// conflict
         LOG.warn("K8s submitter: resource already exists, need to replace it.", e);
-        this.replacePodMonitor(api);
+        return this.replace(api);
       } else {
         LOG.error("K8s submitter: create PodMonitor object failed by " + e.getMessage(), e);
         throw new SubmarineRuntimeException(e.getCode(),
@@ -144,14 +151,15 @@ public class PodMonitor extends V1PodMonitor {
   /**
    * Replace PodMonitor
    */
-  public void replacePodMonitor(CustomObjectsApi api) {
+  @Override
+  public Object replace(K8sApi api) {
     try {
       // reset metadata to get resource version so that we can replace PodMonitor
       if (StringUtils.isBlank(this.getMetadata().getResourceVersion())) {
         resetMeta(api);
       }
       // replace
-      api.replaceNamespacedCustomObject(this.getGroup(), this.getVersion(),
+      return api.getApi().replaceNamespacedCustomObject(this.getGroup(), this.getVersion(),
           getMetadata().getNamespace(), this.getPlural(), this.getMetadata().getName(), this, null, null);
     } catch (ApiException e) {
       LOG.error("K8s submitter: replace PodMonitor object failed by " + e.getMessage(), e);
@@ -163,14 +171,15 @@ public class PodMonitor extends V1PodMonitor {
   /**
    * Delete PodMonitor
    */
-  public void deletePodMonitor(CustomObjectsApi api) {
+  @Override
+  public Object delete(K8sApi api) {
     try {
-      api.deleteNamespacedCustomObject(this.getGroup(), this.getVersion(),
+      return api.getApi().deleteNamespacedCustomObject(this.getGroup(), this.getVersion(),
           this.getMetadata().getNamespace(), this.getPlural(),
           this.getMetadata().getName(), null, null, null,
           null, new V1DeleteOptionsBuilder().withApiVersion(this.getApiVersion()).build());
     } catch (ApiException e) {
-      NotebookUtils.API_EXCEPTION_404_CONSUMER.accept(e);
+      return K8sSubmitter.API_EXCEPTION_404_CONSUMER.apply(e);
     }
   }
 

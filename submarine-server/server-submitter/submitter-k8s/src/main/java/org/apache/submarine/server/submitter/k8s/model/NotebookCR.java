@@ -22,12 +22,13 @@ package org.apache.submarine.server.submitter.k8s.model;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.annotations.SerializedName;
 import io.kubernetes.client.openapi.ApiException;
-import io.kubernetes.client.openapi.apis.CustomObjectsApi;
 import io.kubernetes.client.openapi.models.V1DeleteOptionsBuilder;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import org.apache.submarine.commons.utils.exception.SubmarineRuntimeException;
 import org.apache.submarine.server.api.notebook.Notebook;
 import org.apache.submarine.server.api.spec.NotebookSpec;
+import org.apache.submarine.server.submitter.k8s.K8sApi;
+import org.apache.submarine.server.submitter.k8s.K8sSubmitter;
 import org.apache.submarine.server.submitter.k8s.parser.NotebookSpecParser;
 import org.apache.submarine.server.submitter.k8s.util.NotebookUtils;
 import org.apache.submarine.server.submitter.k8s.util.OwnerReferenceUtils;
@@ -35,7 +36,7 @@ import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class NotebookCR {
+public class NotebookCR implements K8sResource {
 
   private static final Logger LOG = LoggerFactory.getLogger(NotebookCR.class);
 
@@ -87,65 +88,6 @@ public class NotebookCR {
       LOG.error("K8s submitter: parse response object failed by " + e.getMessage(), e);
       throw new SubmarineRuntimeException(500, "K8s Submitter parse upstream response failed.");
     }
-  }
-
-  /**
-   * Delete Notebook CRD
-   */
-  public Notebook deleteNotebookCRD(CustomObjectsApi api) {
-    Notebook notebook = null;
-    try {
-      Object object = api.deleteNamespacedCustomObject(this.getGroup(), this.getVersion(),
-              getMetadata().getNamespace(), this.getPlural(),
-              this.getMetadata().getName(), null, null, null,
-              null, new V1DeleteOptionsBuilder().withApiVersion(this.getApiVersion()).build());
-      notebook = NotebookUtils.parseObject(object, NotebookUtils.ParseOpt.PARSE_OPT_DELETE);
-    } catch (ApiException e) {
-      NotebookUtils.API_EXCEPTION_404_CONSUMER.accept(e);
-    } finally {
-      if (notebook == null) {
-        // add metadata time info
-        this.getMetadata().setDeletionTimestamp(new DateTime());
-        // build notebook response
-        notebook = NotebookUtils.buildNotebookResponse(this);
-        notebook.setStatus(Notebook.Status.STATUS_NOT_FOUND.getValue());
-        notebook.setReason("The notebook instance is not found");
-      }
-    }
-    return notebook;
-  }
-
-  public Notebook createNotebookCRD(CustomObjectsApi api) {
-    return createNotebookCRD(api, false);
-  }
-
-  /**
-   * Create Notebook CRD
-   * @param api CustomObjectsApi
-   * @param tolerate Update when create conflicts
-   * @return Notebook
-   */
-  public Notebook createNotebookCRD(CustomObjectsApi api, boolean tolerate) {
-    Notebook notebook = null;
-    try {
-      Object object = api.createNamespacedCustomObject(this.getGroup(), this.getVersion(),
-              getMetadata().getNamespace(), this.getPlural(), this, "true", null, null);
-      notebook = NotebookUtils.parseObject(object, NotebookUtils.ParseOpt.PARSE_OPT_CREATE);
-    } catch (JsonSyntaxException e) {
-      LOG.error("K8s submitter: parse response object failed by " + e.getMessage(), e);
-      throw new SubmarineRuntimeException(500, "K8s Submitter parse upstream response failed.");
-    } catch (ApiException e) {
-      if (e.getCode() == 409 && tolerate) {// conflict
-        // todo need to replace CRD
-        LOG.warn("K8s submitter: resource already exists, need to replace it.", e);
-        notebook = NotebookUtils.parseObject(this, NotebookUtils.ParseOpt.PARSE_OPT_REPLACE);
-      } else {
-        LOG.error("K8s submitter: parse Notebook object failed by " + e.getMessage(), e);
-        throw new SubmarineRuntimeException(e.getCode(), "K8s submitter: parse Notebook object failed by " +
-                e.getMessage());
-      }
-    }
-    return notebook;
   }
 
   public String getApiVersion() {
@@ -210,5 +152,74 @@ public class NotebookCR {
 
   public void setStatus(NotebookStatus status) {
     this.status = status;
+  }
+
+  @Override
+  public NotebookCR read(K8sApi api) {
+    return this;
+  }
+
+  @Override
+  public Notebook create(K8sApi api) {
+    return create(api, false);
+  }
+
+
+  /**
+   * Create Notebook CRD
+   * @param api CustomObjectsApi
+   * @param tolerate Update when create conflicts
+   * @return Notebook
+   */
+  public Notebook create(K8sApi api, boolean tolerate) {
+    Notebook notebook = null;
+    try {
+      Object object = api.getApi().createNamespacedCustomObject(this.getGroup(), this.getVersion(),
+              getMetadata().getNamespace(), this.getPlural(), this, "true", null, null);
+      notebook = NotebookUtils.parseObject(object, NotebookUtils.ParseOpt.PARSE_OPT_CREATE);
+    } catch (JsonSyntaxException e) {
+      LOG.error("K8s submitter: parse response object failed by " + e.getMessage(), e);
+      throw new SubmarineRuntimeException(500, "K8s Submitter parse upstream response failed.");
+    } catch (ApiException e) {
+      if (e.getCode() == 409 && tolerate) {// conflict
+        // todo need to replace CRD
+        LOG.warn("K8s submitter: resource already exists, need to replace it.", e);
+        notebook = NotebookUtils.parseObject(this, NotebookUtils.ParseOpt.PARSE_OPT_REPLACE);
+      } else {
+        LOG.error("K8s submitter: parse Notebook object failed by " + e.getMessage(), e);
+        throw new SubmarineRuntimeException(e.getCode(), "K8s submitter: parse Notebook object failed by " +
+                e.getMessage());
+      }
+    }
+    return notebook;
+  }
+
+  @Override
+  public Object replace(K8sApi api) {
+    return null;
+  }
+
+  @Override
+  public Notebook delete(K8sApi api) {
+    Notebook notebook = null;
+    try {
+      Object object = api.getApi().deleteNamespacedCustomObject(this.getGroup(), this.getVersion(),
+              getMetadata().getNamespace(), this.getPlural(),
+              this.getMetadata().getName(), null, null, null,
+              null, new V1DeleteOptionsBuilder().withApiVersion(this.getApiVersion()).build());
+      notebook = NotebookUtils.parseObject(object, NotebookUtils.ParseOpt.PARSE_OPT_DELETE);
+    } catch (ApiException e) {
+      K8sSubmitter.API_EXCEPTION_404_CONSUMER.apply(e);
+    } finally {
+      if (notebook == null) {
+        // add metadata time info
+        this.getMetadata().setDeletionTimestamp(new DateTime());
+        // build notebook response
+        notebook = NotebookUtils.buildNotebookResponse(this);
+        notebook.setStatus(Notebook.Status.STATUS_NOT_FOUND.getValue());
+        notebook.setReason("The notebook instance is not found");
+      }
+    }
+    return notebook;
   }
 }
