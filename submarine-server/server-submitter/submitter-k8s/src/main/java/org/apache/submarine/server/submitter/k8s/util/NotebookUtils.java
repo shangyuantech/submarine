@@ -24,6 +24,8 @@ import com.google.gson.JsonSyntaxException;
 import io.kubernetes.client.openapi.JSON;
 import io.kubernetes.client.openapi.models.V1ContainerState;
 import io.kubernetes.client.openapi.models.V1Status;
+import org.apache.submarine.commons.utils.SubmarineConfVars;
+import org.apache.submarine.commons.utils.SubmarineConfiguration;
 import org.apache.submarine.commons.utils.exception.SubmarineRuntimeException;
 import org.apache.submarine.server.api.notebook.Notebook;
 import org.apache.submarine.server.submitter.k8s.model.NotebookCR;
@@ -50,8 +52,24 @@ public class NotebookUtils {
   public static final String PV_PREFIX = "notebook-pv";
   public static final String PVC_PREFIX = "notebook-pvc";
   public static final String OVERWRITE_PREFIX = "overwrite-configmap";
+  public static final String JUPYTER_CONFIG_PREFIX = "jupyter-configmap";
   public static final String HOST_PATH = "/mnt";
   public static final String DEFAULT_OVERWRITE_FILE_NAME = "overrides.json";
+  public static final String DEFAULT_JUPYTER_CONFIG_NAME = "jupyter_notebook_config.py";
+
+  public static final String OVERWRITE_JSON;
+  public static final String JUPYTER_CONFIGMAP;
+  public static final boolean PROMETHEUS_ENABLE;
+
+  static {
+    final SubmarineConfiguration conf = SubmarineConfiguration.getInstance();
+    OVERWRITE_JSON = conf.getString(
+            SubmarineConfVars.ConfVars.SUBMARINE_NOTEBOOK_DEFAULT_OVERWRITE_JSON);
+    JUPYTER_CONFIGMAP = conf.getString(
+            SubmarineConfVars.ConfVars.SUBMARINE_NOTEBOOK_DEFAULT_JUPYTER_CONFIGMAP);
+    PROMETHEUS_ENABLE = conf.getBoolean(
+            SubmarineConfVars.ConfVars.SUBMARINE_NOTEBOOK_PROMETHEUS_ENABLE);
+  }
 
   public enum ParseOpt {
     PARSE_OPT_CREATE,

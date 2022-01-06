@@ -31,5 +31,24 @@ storageClass:
   # parameters describe volumes belonging to the storage class
   parameters:
 
+# Prometheus supported or not. if supported, will create PodMonitor for each notebook resource
 prometheus:
   support: false
+
+# jupyter notebook config
+jupyter:
+  # Initialize the jupyter_notebook_config.py or note
+  # Reference https://jupyter-notebook.readthedocs.io/en/stable/public_server.html#prerequisite-a-notebook-configuration-file
+  notebook_config: ""
+#  notebook_config: |-
+#    c.JupyterHub.tornado_settings={
+#      'headers':{
+#        'Content-Security-Policy': "frame-ancestors *;"
+#      }
+#    }
+#
+#    c.NotebookApp.tornado_settings={
+#      'headers':{
+#        'Content-Security-Policy': "frame-ancestors *;"
+#      }
+#    }

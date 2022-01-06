@@ -74,6 +74,7 @@ public class SubmarineConfVars {
     SUBMARINE_AUTH_TYPE("submarine.auth.type", "default"),
 
     SUBMARINE_NOTEBOOK_DEFAULT_OVERWRITE_JSON("submarine.notebook.default.overwrite_json", ""),
+    SUBMARINE_NOTEBOOK_DEFAULT_JUPYTER_CONFIGMAP("submarine.notebook.default.jupyter_configmap", ""),
 
     /* prometheus */
     SUBMARINE_NOTEBOOK_PROMETHEUS_ENABLE("submarine.notebook.prometheus.enable", false),

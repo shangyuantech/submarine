@@ -54,7 +54,6 @@ import io.kubernetes.client.util.ClientBuilder;
 import io.kubernetes.client.util.KubeConfig;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.submarine.commons.utils.SubmarineConfVars;
 import org.apache.submarine.commons.utils.SubmarineConfiguration;
 import org.apache.submarine.commons.utils.exception.SubmarineRuntimeException;
 import org.apache.submarine.serve.istio.IstioVirtualService;
@@ -112,17 +111,6 @@ public class K8sSubmitter implements Submitter {
       return null;
     }
   };
-
-  private static final String OVERWRITE_JSON;
-  private static final boolean PROMETHEUS_ENABLE;
-
-  static {
-    final SubmarineConfiguration conf = SubmarineConfiguration.getInstance();
-    OVERWRITE_JSON = conf.getString(
-        SubmarineConfVars.ConfVars.SUBMARINE_NOTEBOOK_DEFAULT_OVERWRITE_JSON);
-    PROMETHEUS_ENABLE = conf.getBoolean(
-        SubmarineConfVars.ConfVars.SUBMARINE_NOTEBOOK_PROMETHEUS_ENABLE);
-  }
 
   // K8s API client for CRD
   private CustomObjectsApi api;
@@ -412,35 +400,32 @@ public class K8sSubmitter implements Submitter {
   @Override
   public Notebook createNotebook(NotebookSpec spec) throws SubmarineRuntimeException {
     final String name = spec.getMeta().getName();
-    final String workspacePvc = String.format("%s-%s", NotebookUtils.PVC_PREFIX, name);
-    final String userPvc = String.format("%s-user-%s", NotebookUtils.PVC_PREFIX, name);
-    final String configmap = String.format("%s-%s", NotebookUtils.OVERWRITE_PREFIX, name);
-    String namespace = getServerNamespace();
+    final String namespace = getServerNamespace();
 
     // parse notebook custom resource
     NotebookCR notebookCR = new NotebookCR(spec, namespace);
     // overwrite.json configmap
-    Configmap overwriteJson = null;
-    if (StringUtils.isNotBlank(OVERWRITE_JSON)) {
-      overwriteJson = new Configmap(namespace, configmap,
-          NotebookUtils.DEFAULT_OVERWRITE_FILE_NAME, OVERWRITE_JSON);
+    Configmap overwrite = null;
+    if (StringUtils.isNotBlank(NotebookUtils.OVERWRITE_JSON)) {
+      overwrite = new Configmap(namespace, String.format("%s-%s", NotebookUtils.OVERWRITE_PREFIX, name),
+          NotebookUtils.DEFAULT_OVERWRITE_FILE_NAME, NotebookUtils.OVERWRITE_JSON);
     }
     // workspace pvc
+    PersistentVolumeClaim workspace = new PersistentVolumeClaim(namespace,
+        String.format("%s-%s", NotebookUtils.PVC_PREFIX, name), NotebookUtils.STORAGE);
     // user setting pvc
-    PersistentVolumeClaim workspace = new PersistentVolumeClaim(namespace, workspacePvc,
-        NotebookUtils.STORAGE);
-    PersistentVolumeClaim userset = new PersistentVolumeClaim(namespace, userPvc,
-        NotebookUtils.DEFAULT_USER_STORAGE);
+    PersistentVolumeClaim userset = new PersistentVolumeClaim(namespace,
+        String.format("%s-user-%s", NotebookUtils.PVC_PREFIX, name), NotebookUtils.DEFAULT_USER_STORAGE);
     // ingress route
     IngressRoute ingressRoute = new IngressRoute(namespace, name);
     // pod monitor
     PodMonitor podMonitor = null;
-    if (PROMETHEUS_ENABLE) {
+    if (NotebookUtils.PROMETHEUS_ENABLE) {
       podMonitor = new PodMonitor(notebookCR);
     }
 
     // commit resources/CRD with transaction
-    List<Object> values = resourceTransaction(workspace, userset, overwriteJson, notebookCR,
+    List<Object> values = resourceTransaction(workspace, userset, overwrite, notebookCR,
         ingressRoute, podMonitor);
 
     return (Notebook) values.get(3);
@@ -545,12 +530,13 @@ public class K8sSubmitter implements Submitter {
         NotebookUtils.DEFAULT_USER_STORAGE).delete(k8sApi);
 
     // configmap
-    if (StringUtils.isNoneBlank(OVERWRITE_JSON)) {
-      new Configmap(namespace, String.format("%s-%s", NotebookUtils.OVERWRITE_PREFIX, name)).delete(k8sApi);
+    if (StringUtils.isNoneBlank(NotebookUtils.OVERWRITE_JSON)) {
+      new Configmap(namespace, String.format("%s-%s", NotebookUtils.OVERWRITE_PREFIX, name))
+          .delete(k8sApi);
     }
 
     // prometheus
-    if (PROMETHEUS_ENABLE) {
+    if (NotebookUtils.PROMETHEUS_ENABLE) {
       new PodMonitor(notebookCR).delete(k8sApi);
     }
 

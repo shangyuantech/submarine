@@ -1,0 +1,9 @@
+{{- if .Values.jupyter.notebook_config }}
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: "{{ .Release.Name }}-jupyter-config"
+data:
+  jupyter_notebook_config.py: >-
+{{ .Values.jupyter.notebook_config | indent 4}}
+{{- end }}

@@ -58,6 +58,10 @@ public class NotebookSpecParser {
   // overrides.json application settings directory
   // https://jupyterlab.readthedocs.io/en/stable/user/directories.html#overrides-json
   private static final String DEFAULT_APPLICATION_SETTING_PATH = "/opt/conda/share/jupyter/lab/settings";
+  // jupyter_notebook_config.py path
+  // https://jupyter-notebook.readthedocs.io/en/stable/public_server.html#
+  // prerequisite-a-notebook-configuration-file
+  private static final String DEFAULT_JUPYTER_CONFIG_PATH = DEFAULT_USER_SET_MOUNT_PATH;
 
   private static final SubmarineConfiguration conf =
           SubmarineConfiguration.getInstance();
@@ -189,9 +193,7 @@ public class NotebookSpecParser {
     volumeList.add(userVolume);
 
     // add overwrite.json configmap
-    String overwriteJson = conf.getString(
-            SubmarineConfVars.ConfVars.SUBMARINE_NOTEBOOK_DEFAULT_OVERWRITE_JSON);
-    if (StringUtils.isNotBlank(overwriteJson)) {
+    if (StringUtils.isNotBlank(NotebookUtils.OVERWRITE_JSON)) {
       // Volume Mount
       V1VolumeMount overwriteVm = new V1VolumeMount();
       overwriteVm.setMountPath(String.format("%s/%s", DEFAULT_APPLICATION_SETTING_PATH,
@@ -207,6 +209,30 @@ public class NotebookSpecParser {
       overwriteCm.setName(String.format("%s-%s", NotebookUtils.OVERWRITE_PREFIX, name));
       overwriteVolume.setConfigMap(overwriteCm);
       volumeList.add(overwriteVolume);
+    }
+
+    // add jupyter_notebook_config.py configmap
+    if (StringUtils.isNotBlank(NotebookUtils.JUPYTER_CONFIGMAP)) {
+      // If file name is not exists, will use a default jupyter config file name
+      // e.g. 1. submarine-jupyter-config 2. submarine-jupyter-config/jupyter_notebook_config.py
+      String[] jupyterConfSplit = NotebookUtils.JUPYTER_CONFIGMAP.split("/");
+      // jupyter_notebook_config file name
+      String fileName = jupyterConfSplit.length > 1 ? jupyterConfSplit[1] :
+          NotebookUtils.DEFAULT_JUPYTER_CONFIG_NAME;
+      // Volume Mount
+      V1VolumeMount jupyterConfVm = new V1VolumeMount();
+      jupyterConfVm.setMountPath(String.format("%s/%s", DEFAULT_JUPYTER_CONFIG_PATH, fileName));
+      jupyterConfVm.setSubPath(fileName);
+      jupyterConfVm.setName(String.format("%s-%s", NotebookUtils.JUPYTER_CONFIG_PREFIX, name));
+      volumeMountList.add(jupyterConfVm);
+
+      // Volume
+      V1Volume jupyterConfVolume = new V1Volume();
+      jupyterConfVolume.setName(jupyterConfVm.getName());
+      V1ConfigMapVolumeSource jupyterConfCm = new V1ConfigMapVolumeSource();
+      jupyterConfCm.setName(jupyterConfSplit[0]);
+      jupyterConfVolume.setConfigMap(jupyterConfCm);
+      volumeList.add(jupyterConfVolume);
     }
 
     // add volume mounts and volumes
