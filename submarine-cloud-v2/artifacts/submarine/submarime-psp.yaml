@@ -1,3 +1,5 @@
+---
+# Source: submarine/templates/submarine-database.yaml
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
@@ -14,31 +16,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-{{/*
-Set up storage class fields
-*/}}
-{{ define "storageClass.fields" }}
-{{ with .Values.storageClass }}
-reclaimPolicy: {{ .reclaimPolicy | default "Delete" }}
-volumeBindingMode: {{ .volumeBindingMode | default "Immediate" }}
-provisioner: {{ .provisioner | default "k8s.io/minikube-hostpath" }}
-{{ if .parameters }}
-parameters:
-  {{ range $key, $val := .parameters }}
-  {{ $key }}: {{ $val | quote }}
-  {{ end }}
-{{ end }}
-{{ end }}
-{{ end }}
-
-{{/*
-Return the appropriate apiGroup for PodSecurityPolicy.
-*/}}
-{{- define "podSecurityPolicy.apiGroup" -}}
-{{- if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
-{{- print "policy" -}}
-{{- else -}}
-{{- print "extensions" -}}
-{{- end -}}
-{{- end -}}
+# Source: submarine/templates/submarine-database.yaml
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: submarine-psp
+spec:
+  privileged: false
+  volumes:
+    - configMap
+    - emptyDir
+    - persistentVolumeClaim
+    - projected
+    - secret
+  hostNetwork: false
+  hostIPC: false
+  hostPID: false
+  runAsUser:
+    rule: 'RunAsAny'
+  seLinux:
+    rule: 'RunAsAny'
+  supplementalGroups:
+    rule: 'MustRunAs'
+    ranges:
+      - min: 1
+        max: 65535
+  fsGroup:
+    rule: 'MustRunAs'
+    ranges:
+      - min: 1
+        max: 65535
+  readOnlyRootFilesystem: false

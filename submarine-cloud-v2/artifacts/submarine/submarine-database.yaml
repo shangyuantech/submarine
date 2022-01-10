@@ -43,11 +43,27 @@ spec:
     app: "submarine-database"
 ---
 # Source: submarine/templates/submarine-database.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: "submarine-database-headless"
+spec:
+  clusterIP: None
+  type: ClusterIP
+  ports:
+    - name: "mysql-port"
+      port: 3306
+      targetPort: 3306
+  selector:
+    app: "submarine-database"
+---
+# Source: submarine/templates/submarine-database.yaml
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: "submarine-database"
 spec:
+  serviceName: submarine-database-headless
   replicas: 1
   selector:
     matchLabels:
@@ -58,10 +74,15 @@ spec:
         app: "submarine-database"
 
     spec:
+      securityContext:
+        fsGroup: 999
+      serviceAccountName: "submarine-storage"
       containers:
         - name: "submarine-database"
           image: "apache/submarine:database-0.7.0-SNAPSHOT"
           imagePullPolicy: "IfNotPresent"
+          securityContext:
+            runAsUser: 999
           ports:
             - containerPort: 3306
           env:

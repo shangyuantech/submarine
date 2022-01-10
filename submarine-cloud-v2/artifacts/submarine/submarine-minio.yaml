@@ -43,12 +43,27 @@ spec:
     port: 9000
     targetPort: 9000
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: submarine-minio-headless
+spec:
+  clusterIP: None
+  type: ClusterIP
+  selector:
+    app: submarine-minio
+  ports:
+    - protocol: TCP
+      port: 9000
+      targetPort: 9000
+---
 # Source: submarine/templates/submarine-minio.yaml
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: submarine-minio
 spec:
+  serviceName: submarine-minio-headless
   selector:
     matchLabels:
       app: submarine-minio
@@ -57,6 +72,7 @@ spec:
       labels:
         app: submarine-minio
     spec:
+      serviceAccountName: "submarine-storage"
       containers:
       - name: submarine-minio-container
         image: minio/minio:RELEASE.2021-02-14T04-01-33Z

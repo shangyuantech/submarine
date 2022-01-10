@@ -16,7 +16,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: submarine-server
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: submarine-storage
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -110,4 +120,31 @@ subjects:
 roleRef:
   kind: Role
   name: "submarine-server"
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: "submarine-storage"
+rules:
+- verbs:
+  - use
+  apiGroups:
+  - extensions
+  resources:
+  - podsecuritypolicies
+  resourceNames:
+  - submarine-psp
+---
+# Source: submarine/templates/rbac.yaml
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: "submarine-storage"
+subjects:
+  - kind: ServiceAccount
+    name: "submarine-storage"
+roleRef:
+  kind: Role
+  name: "submarine-storage"
   apiGroup: rbac.authorization.k8s.io
