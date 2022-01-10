@@ -48,6 +48,8 @@ spec:
               value: "true"
             - name: SUBMARINE_POD_SECURITY_POLICY_NAME
               value: {{ template "podSecurityPolicy.name" . }}
+            - name: SUBMARINE_POD_SECURITY_POLICY_GROUP
+              value: {{ template "podSecurityPolicy.apiGroup" . }}
           {{- end }}
       serviceAccountName: submarine-operator
 status: {}

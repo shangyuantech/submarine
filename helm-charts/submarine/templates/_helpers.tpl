@@ -43,6 +43,20 @@ Return the appropriate apiGroup for PodSecurityPolicy.
 {{- end -}}
 {{- end -}}
 
+{{/*
+Return the appropriate apiVersion for PodSecurityPolicy.
+*/}}
+{{- define "podSecurityPolicy.apiVersion" -}}
+{{- if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
+{{- print "policy/v1beta1" -}}
+{{- else -}}
+{{- print "extensions/v1beta1" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Return the PodSecurityPolicy name.
+*/}}
 {{- define "podSecurityPolicy.name" -}}
 {{- printf "%s-security-policy" .Release.Name -}}
 {{-end }}
