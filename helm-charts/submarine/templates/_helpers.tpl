@@ -42,3 +42,7 @@ Return the appropriate apiGroup for PodSecurityPolicy.
 {{- print "extensions" -}}
 {{- end -}}
 {{- end -}}
+
+{{- define "podSecurityPolicy.name" -}}
+{{- printf "%s-security-policy" .Release.Name -}}
+{{-end }}

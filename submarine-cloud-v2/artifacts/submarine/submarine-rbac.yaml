@@ -135,6 +135,14 @@ rules:
   - podsecuritypolicies
   resourceNames:
   - submarine-psp
+#- verbs:
+#    - use
+#  apiGroups:
+#    - security.openshift.io
+#  resources:
+#    - securitycontextconstraints
+#  resourceNames:
+#    - submarine-scc
 ---
 # Source: submarine/templates/rbac.yaml
 kind: RoleBinding

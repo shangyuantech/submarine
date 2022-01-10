@@ -21,7 +21,7 @@
 apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
 metadata:
-  name: submarine-scc
+  name: {{ template "podSecurityPolicy.name" . }}
 allowHostDirVolumePlugin: false
 allowHostIPC: false
 allowHostNetwork: false
@@ -59,7 +59,7 @@ volumes:
 apiVersion: {{ template "podSecurityPolicy.apiVersion" . }}
 kind: PodSecurityPolicy
 metadata:
-  name: "{{ .Values.name }}"-psp
+  name: {{ template "podSecurityPolicy.name" . }}
 spec:
   privileged: false
   volumes:
