@@ -439,7 +439,7 @@ public class K8sSubmitter implements Submitter {
     Map<K8sResource, Object> commits = new LinkedHashMap<>();
     try {
       for (K8sResource resource : resources) {
-        if (resources != null) {
+        if (resource != null) {
           commits.put(resource, resource.create(k8sApi));
         } else {
           commits.put(new NullResource(), null);
@@ -452,8 +452,10 @@ public class K8sSubmitter implements Submitter {
         List<K8sResource> rollbacks = new ArrayList<>(commits.keySet());
         for (int i = rollbacks.size() - 1; i >= 0; i--) {
           K8sResource rollback = rollbacks.get(i);
-          LOG.debug("Rollback resources {}/{}", rollback.getKind(), rollback.getMetadata().getName());
-          rollbacks.get(i).delete(k8sApi);
+          if (!(rollback instanceof NullResource)) {
+            LOG.debug("Rollback resources {}/{}", rollback.getKind(), rollback.getMetadata().getName());
+            rollbacks.get(i).delete(k8sApi);
+          }
         }
       }
       throw e;
