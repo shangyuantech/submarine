@@ -36,7 +36,9 @@ def make_datasets_unbatched():
     # If we use tensorflow_datasets > 3.1.0, we need to disable GCS
     # https://github.com/tensorflow/datasets/issues/2761#issuecomment-1187413141
     if Version(tfds.__version__) > Version("3.1.0"):
+        print("Disable GCS ...")
         tfds.core.utils.gcs_utils._is_gcs_disabled = True
+    print("Loading dataset ...")
     datasets, _ = tfds.load(name="mnist", with_info=True, as_supervised=True)
 
     return datasets["train"].map(scale).cache().shuffle(BUFFER_SIZE)
