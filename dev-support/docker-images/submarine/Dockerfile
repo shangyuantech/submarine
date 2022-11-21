@@ -23,13 +23,13 @@ MAINTAINER Apache Software Foundation <dev@submarine.apache.org>
 
 # INSTALL openjdk
 RUN apk update && \
-    apk add --no-cache openjdk8 tzdata bash tini&& \
+    apk add --no-cache openjdk11 tzdata bash tini&& \
     cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
     echo Asia/Shanghai > /etc/timezone && \
     apk del tzdata && \
     rm -rf /tmp/* /var/cache/apk/*
 
-ENV JAVA_HOME /usr/lib/jvm/java-1.8-openjdk/jre
+ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk/jre
 
 # Install Submarine
 ADD ./tmp/submarine-dist-*.tar.gz /opt/
