@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM alpine:3.10
+FROM alpine:3.16.3
 MAINTAINER Apache Software Foundation <dev@submarine.apache.org>
 
 # If you are in China, enabling the following two lines of code can speed up the build of the image, but it may cause failure in travis.
@@ -30,6 +30,7 @@ RUN apk update && \
     rm -rf /tmp/* /var/cache/apk/*
 
 ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk/jre
+ENV SUBMARINE_AUTH_TYPE simple
 
 # Install Submarine
 ADD ./tmp/submarine-dist-*.tar.gz /opt/
