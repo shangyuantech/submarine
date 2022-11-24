@@ -110,8 +110,8 @@ public class NotebookReconciler implements Reconciler<NotebookResource> {
       String reason = getReason(lastCondition);
       // time
       Date date = getLastProbeTime(lastCondition);
-      LOGGER.info("receiving type: {}", type);
-      LOGGER.info("current status/reason of {} is {}/{}", name, lastCondition.getStatus(), reason);
+      LOGGER.info("current type/status/reason of {} is {} / {} / {}",
+          name, type, lastCondition.getStatus(), reason);
       String id = notebook.getMetadata().getLabels().get("notebook-id");
       switch (reason) {
         case "Created":

@@ -48,7 +48,7 @@ public interface ExperimentMapper {
   int succeed(@Param("id") String id, @Param("finishedTime") Date finishedTime);
 
   /**
-   * Update experimentStatus to 'CreFailedated'
+   * Update experimentStatus to 'Failed'
    */
   int failed(@Param("id") String id, @Param("finishedTime") Date finishedTime);
 

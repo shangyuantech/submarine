@@ -24,6 +24,7 @@ import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import io.javaoperatorsdk.operator.Operator;
 import io.javaoperatorsdk.operator.api.reconciler.Reconciler;
 import org.apache.submarine.commons.utils.exception.SubmarineRuntimeException;
+import org.apache.submarine.server.k8s.utils.OwnerReferenceConfig;
 import org.reflections.Reflections;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +67,7 @@ public class SubmarineAgentListener {
           }
         }
     );
+    LOGGER.info("Starting agent with SUBMARINE_UID={}", OwnerReferenceConfig.getSubmarineUid());
     // Adds a shutdown hook that automatically calls stop() when the app shuts down.
     operator.installShutdownHook();
     // start operator

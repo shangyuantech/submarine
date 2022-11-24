@@ -46,6 +46,9 @@ public abstract class JobReconciler<T extends JobResource> {
 
   private final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
+  /**
+   * Update experiment status to 'Created'
+   */
   protected void create(String id, Date acceptedTime) {
     try (SqlSession sqlSession = MyBatisUtil.getSqlSession()) {
       ExperimentMapper mapper = sqlSession.getMapper(ExperimentMapper.class);
@@ -56,6 +59,9 @@ public abstract class JobReconciler<T extends JobResource> {
     }
   }
 
+  /**
+   * Update experiment status to 'Succeeded'
+   */
   protected void succeed(String id, Date finishedTime) {
     try (SqlSession sqlSession = MyBatisUtil.getSqlSession()) {
       ExperimentMapper mapper = sqlSession.getMapper(ExperimentMapper.class);
@@ -66,6 +72,9 @@ public abstract class JobReconciler<T extends JobResource> {
     }
   }
 
+  /**
+   * Update experiment status to 'Failed'
+   */
   protected void failed(String id, Date finishedTime) {
     try (SqlSession sqlSession = MyBatisUtil.getSqlSession()) {
       ExperimentMapper mapper = sqlSession.getMapper(ExperimentMapper.class);
@@ -76,6 +85,9 @@ public abstract class JobReconciler<T extends JobResource> {
     }
   }
 
+  /**
+   * Update experiment status to 'Running'
+   */
   protected void running(String id, Date runningTime) {
     try (SqlSession sqlSession = MyBatisUtil.getSqlSession()) {
       ExperimentMapper mapper = sqlSession.getMapper(ExperimentMapper.class);
@@ -141,8 +153,8 @@ public abstract class JobReconciler<T extends JobResource> {
       // time
       ZonedDateTime zdt = ZonedDateTime.parse(lastCondition.getLastTransitionTime(), DTF);
       Date date = Date.from(zdt.toInstant());
-      LOGGER.info("receiving type: {}", type);
-      LOGGER.info("current status/reason of {} is {}/{}", name, lastCondition.getStatus(), reason);
+      LOGGER.info("current type/status/reason of {} is {} / {} / {}",
+          name, type, lastCondition.getStatus(), reason);
       switch (type) {
         case "Created":
           create(name, date);

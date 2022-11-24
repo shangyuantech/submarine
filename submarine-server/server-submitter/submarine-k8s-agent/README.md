@@ -14,3 +14,23 @@
 
 # Submarine Agent
 
+## Development Guide
+
+The `submarine-server` created with operator contains a `SUBMARINE_UID` environment variable,
+which we will also need to configure locally during the development phase.
+```shell
+export SUBMARINE_UID=${submarine_uid}
+```
+
+Also, we need use `port-forward` to link the database port to a local connection
+```shell
+kubectl port-forward service/submarine-database 3306:3306 -n submarine-user-test
+```
+
+## Build Image
+
+We already have a script to automate the image compilation
+```shell
+cd ./dev-support/docker-images/agent
+./build.sh
+```
