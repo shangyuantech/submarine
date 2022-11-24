@@ -17,20 +17,26 @@
  * under the License.
  */
 
-package org.apache.submarine.server.k8s.agent;
+package org.apache.submarine.server.k8s.agent.reconciler;
 
+import io.javaoperatorsdk.operator.api.reconciler.Context;
+import io.javaoperatorsdk.operator.api.reconciler.ControllerConfiguration;
+import io.javaoperatorsdk.operator.api.reconciler.Reconciler;
+import io.javaoperatorsdk.operator.api.reconciler.UpdateControl;
 import org.apache.submarine.server.api.common.CustomResourceType;
-import org.apache.submarine.server.k8s.agent.handler.CustomResourceHandler;
+import org.apache.submarine.server.k8s.agent.model.training.resource.TFJob;
 
-public class HandlerFactory {
+@ControllerConfiguration
+public class TFJobReconciler extends JobReconciler<TFJob> implements Reconciler<TFJob> {
 
-  private static String HANDLER_POSTFIX = "Handler";
-  private static String HANDLER_PACKAGE = "org.apache.submarine.server.k8s.agent.handler";
-    
-  public static CustomResourceHandler getHandler(CustomResourceType crType) 
-          throws ClassNotFoundException, InstantiationException, IllegalAccessException {
-    String handlerClassStr = HANDLER_PACKAGE + "." +  crType.toString() + HANDLER_POSTFIX;
-    Class handlerClass = Class.forName(handlerClassStr);
-    return (CustomResourceHandler) handlerClass.newInstance();
+  @Override
+  public UpdateControl<TFJob> reconcile(TFJob tfJob, Context<TFJob> context) {
+    triggerStatus(tfJob);
+    return UpdateControl.noUpdate();
+  }
+
+  @Override
+  public CustomResourceType type() {
+    return CustomResourceType.TFJob;
   }
 }

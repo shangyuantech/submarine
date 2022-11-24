@@ -17,28 +17,21 @@
  * under the License.
  */
 
-package org.apache.submarine.server.database.notebook.mappers;
+package org.apache.submarine.server.k8s.agent.model.training;
 
-import org.apache.ibatis.annotations.Param;
-import org.apache.submarine.server.database.notebook.entity.NotebookEntity;
+import io.fabric8.kubernetes.api.model.Namespaced;
+import io.fabric8.kubernetes.client.CustomResource;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+import org.apache.submarine.server.k8s.agent.model.training.status.JobStatus;
 
-import java.util.Date;
-import java.util.List;
+/**
+ * Kubeflow training operator custom resource
+ */
+public class JobResource extends CustomResource<Void, JobStatus> implements Namespaced {
 
-public interface NotebookMapper {
-  List<NotebookEntity> selectAll();
+    public String toString() {
+        return ToStringBuilder.reflectionToString(this, ToStringStyle.JSON_STYLE);
+    }
 
-  NotebookEntity select(String id);
-
-  int insert(NotebookEntity notebook);
-
-  int update(NotebookEntity notebook);
-
-  int delete(String id);
-
-  /**
-   * Update notebook status
-   */
-  int updateStatus(@Param("id") String id, @Param("status") String status,
-                   @Param("reason") String reason, @Param("updateTime")Date updateTime);
 }
