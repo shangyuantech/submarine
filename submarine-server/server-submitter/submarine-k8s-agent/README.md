@@ -29,7 +29,7 @@ kubectl port-forward service/submarine-database 3306:3306 -n submarine-user-test
 
 ## Build Image
 
-We already have a script to automate the image compilation
+We already have a script to automate the image build
 ```shell
 cd ./dev-support/docker-images/agent
 ./build.sh
