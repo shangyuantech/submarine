@@ -26,7 +26,16 @@ import io.javaoperatorsdk.operator.api.reconciler.UpdateControl;
 import org.apache.submarine.server.api.common.CustomResourceType;
 import org.apache.submarine.server.k8s.agent.model.training.resource.XGBoostJob;
 
-@ControllerConfiguration
+/**
+ * XGBoost Job Reconciler
+ * <p>
+ * Submarine will add `submarine-experiment-name` label when creating the experiment,
+ * so we need to do the filtering.
+ * <p>
+ * Label selectors reference:
+ * https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#api
+ */
+@ControllerConfiguration(labelSelector = "submarine-experiment-name")
 public class XGBoostJobReconciler extends JobReconciler<XGBoostJob> implements Reconciler<XGBoostJob> {
 
   @Override

@@ -41,7 +41,16 @@ import java.util.Objects;
 
 import static org.apache.submarine.server.k8s.agent.SubmarineAgentListener.DTF;
 
-@ControllerConfiguration
+/**
+ * Notebook Reconciler
+ * <p>
+ * Submarine will add `notebook-id` and `notebook-owner-id` labels when creating the notebook,
+ * so we need to do the filtering.
+ * <p>
+ * Label selectors reference:
+ * https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#api
+ */
+@ControllerConfiguration(labelSelector = "notebook-id,notebook-owner-id")
 public class NotebookReconciler implements Reconciler<NotebookResource> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NotebookReconciler.class);

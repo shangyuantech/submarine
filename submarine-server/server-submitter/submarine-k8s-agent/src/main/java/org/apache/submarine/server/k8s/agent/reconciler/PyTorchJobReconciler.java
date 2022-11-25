@@ -26,7 +26,16 @@ import io.javaoperatorsdk.operator.api.reconciler.UpdateControl;
 import org.apache.submarine.server.api.common.CustomResourceType;
 import org.apache.submarine.server.k8s.agent.model.training.resource.PyTorchJob;
 
-@ControllerConfiguration
+/**
+ * PyTorch Job Reconciler
+ * <p>
+ * Submarine will add `submarine-experiment-name` label when creating the experiment,
+ * so we need to do the filtering.
+ * <p>
+ * Label selectors reference:
+ * https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#api
+ */
+@ControllerConfiguration(labelSelector = "submarine-experiment-name")
 public class PyTorchJobReconciler extends JobReconciler<PyTorchJob> implements Reconciler<PyTorchJob> {
 
   @Override

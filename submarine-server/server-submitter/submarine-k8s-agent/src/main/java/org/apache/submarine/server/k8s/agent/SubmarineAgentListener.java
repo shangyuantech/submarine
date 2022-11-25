@@ -55,12 +55,13 @@ public class SubmarineAgentListener {
     // scan all Reconciler implemented subclasses
     Reflections reflections = new Reflections("org.apache.submarine.server.k8s.agent");
     Set<Class<? extends Reconciler>> reconcilers = reflections.getSubTypesOf(Reconciler.class);
+    String namespace = client.getNamespace();
     reconcilers.forEach(reconciler ->
         {
           try {
-            LOGGER.info("Register {} ...", reconciler.getName());
+            LOGGER.info("Register {} in namespace {} ...", reconciler.getName(), namespace);
             operator.register(reconciler.getDeclaredConstructor().newInstance(),
-                config -> config.settingNamespace(client.getNamespace())
+                config -> config.settingNamespace(namespace)
             );
           } catch (Exception e) {
             throw new SubmarineRuntimeException("Can not new instance " + reconciler.getName());
