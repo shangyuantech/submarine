@@ -138,6 +138,7 @@ public abstract class JobReconciler<T extends JobResource> {
      *       succeeded: 2
      *   startTime: "2022-11-23T02:20:51Z"
      */
+    if (resource.getStatus() == null) return;
     List<JobCondition> conditions = resource.getStatus().getConditions();
     // find experiment name/experiment_id
     String name = resource.getMetadata().getName();

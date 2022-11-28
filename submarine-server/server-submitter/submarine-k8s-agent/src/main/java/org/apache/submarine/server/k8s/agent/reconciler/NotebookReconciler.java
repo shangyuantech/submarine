@@ -79,6 +79,7 @@ public class NotebookReconciler implements Reconciler<NotebookResource> {
    * Trigger status
    */
   private void triggerStatus(NotebookResource notebook) {
+    if (notebook.getStatus() == null) return;
     List<NotebookCondition> conditions = notebook.getStatus().getConditions();
     // find notebook name/notebook_id
     String name = notebook.getMetadata().getName();
