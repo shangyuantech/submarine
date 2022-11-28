@@ -20,6 +20,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/apache/submarine/submarine-cloud-v3/controllers/util"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -33,7 +34,7 @@ import (
 )
 
 func (r *SubmarineReconciler) newSubmarineServerServiceAccount(ctx context.Context, submarine *submarineapacheorgv1alpha1.Submarine) *corev1.ServiceAccount {
-	serviceAccount, err := ParseServiceAccountYaml(serverYamlPath)
+	serviceAccount, err := util.ParseServiceAccountYaml(serverYamlPath)
 	if err != nil {
 		r.Log.Error(err, "ParseServiceAccountYaml")
 	}
@@ -46,7 +47,7 @@ func (r *SubmarineReconciler) newSubmarineServerServiceAccount(ctx context.Conte
 }
 
 func (r *SubmarineReconciler) newSubmarineServerService(ctx context.Context, submarine *submarineapacheorgv1alpha1.Submarine) *corev1.Service {
-	service, err := ParseServiceYaml(serverYamlPath)
+	service, err := util.ParseServiceYaml(serverYamlPath)
 	if err != nil {
 		r.Log.Error(err, "ParseServiceYaml")
 	}
@@ -86,8 +87,13 @@ func (r *SubmarineReconciler) newSubmarineServerDeployment(ctx context.Context, 
 			Value: string(submarine.UID),
 		},
 	}
+	// extra envs
+	extraEnv := submarine.Spec.Server.Env
+	if extraEnv != nil {
+		operatorEnv = append(operatorEnv, extraEnv...)
+	}
 
-	deployment, err := ParseDeploymentYaml(serverYamlPath)
+	deployment, err := util.ParseDeploymentYaml(serverYamlPath)
 	if err != nil {
 		r.Log.Error(err, "ParseDeploymentYaml")
 	}
@@ -98,6 +104,25 @@ func (r *SubmarineReconciler) newSubmarineServerDeployment(ctx context.Context, 
 	}
 	deployment.Spec.Replicas = &serverReplicas
 	deployment.Spec.Template.Spec.Containers[0].Env = append(deployment.Spec.Template.Spec.Containers[0].Env, operatorEnv...)
+
+	// server image
+	serverImage := submarine.Spec.Server.Image
+	if serverImage != "" {
+		deployment.Spec.Template.Spec.Containers[0].Image = serverImage
+	} else {
+		deployment.Spec.Template.Spec.Containers[0].Image = fmt.Sprintf("apache/submarine:server-%s", submarine.Spec.Version)
+	}
+	commonImage := util.GetSubmarineCommonImage(submarine)
+	// minio/mc image
+	mcImage := commonImage.McImage
+	if mcImage != "" {
+		deployment.Spec.Template.Spec.InitContainers[0].Image = mcImage
+	}
+	// pull secrets
+	pullSecrets := commonImage.PullSecrets
+	if pullSecrets != nil {
+		deployment.Spec.Template.Spec.ImagePullSecrets = r.CreatePullSecrets(&pullSecrets)
+	}
 
 	return deployment
 }
@@ -165,6 +190,15 @@ func (r *SubmarineReconciler) createSubmarineServer(ctx context.Context, submari
 		deployment = r.newSubmarineServerDeployment(ctx, submarine)
 		err = r.Create(ctx, deployment)
 		r.Log.Info("Create Deployment", "name", deployment.Name)
+	} else {
+		newDeployment := r.newSubmarineServerDeployment(ctx, submarine)
+		// compare if there are same
+		if !CompareServerDeployment(deployment, newDeployment) {
+			// update meta with uid
+			newDeployment.ObjectMeta = deployment.ObjectMeta
+			err = r.Update(ctx, newDeployment)
+			r.Log.Info("Update Deployment", "name", deployment.Name)
+		}
 	}
 
 	// If an error occurs during Get/Create, we'll requeue the item so we can
@@ -183,18 +217,40 @@ func (r *SubmarineReconciler) createSubmarineServer(ctx context.Context, submari
 		return fmt.Errorf(msg)
 	}
 
-	// Update the replicas of the server deployment if it is not equal to spec
-	if submarine.Spec.Server.Replicas != nil && *submarine.Spec.Server.Replicas != *deployment.Spec.Replicas {
-		msg := fmt.Sprintf("Submarine %s server spec replicas", submarine.Name)
-		r.Log.Info(msg, "server spec", *submarine.Spec.Server.Replicas, "actual", *deployment.Spec.Replicas)
-
-		deployment = r.newSubmarineServerDeployment(ctx, submarine)
-		err = r.Update(ctx, deployment)
-	}
-
-	if err != nil {
-		return err
-	}
-
 	return nil
+}
+
+// CompareServerDeployment will determine if two Deployments are equal
+func CompareServerDeployment(oldDeployment, newDeployment *appsv1.Deployment) bool {
+	// spec.replicas
+	if *oldDeployment.Spec.Replicas != *newDeployment.Spec.Replicas {
+		return false
+	}
+	if len(oldDeployment.Spec.Template.Spec.Containers) != 1 {
+		return false
+	}
+	// spec.template.spec.containers[0].env
+	if !util.CompareEnv(oldDeployment.Spec.Template.Spec.Containers[0].Env, newDeployment.Spec.Template.Spec.Containers[0].Env) {
+		return false
+	}
+	// spec.template.spec.containers[0].image
+	if oldDeployment.Spec.Template.Spec.Containers[0].Image != newDeployment.Spec.Template.Spec.Containers[0].Image {
+		return false
+	}
+	// spec.template.spec.initContainers[0].image
+	if len(oldDeployment.Spec.Template.Spec.InitContainers) != 1 {
+		return false
+	}
+	if oldDeployment.Spec.Template.Spec.InitContainers[0].Image != newDeployment.Spec.Template.Spec.InitContainers[0].Image {
+		return false
+	}
+	// spec.template.spec.initContainers[0].command
+	if !util.CompareSlice(oldDeployment.Spec.Template.Spec.InitContainers[0].Command, newDeployment.Spec.Template.Spec.InitContainers[0].Command) {
+		return false
+	}
+	// spec.template.spec.imagePullSecrets
+	if !util.ComparePullSecrets(oldDeployment.Spec.Template.Spec.ImagePullSecrets, newDeployment.Spec.Template.Spec.ImagePullSecrets) {
+		return false
+	}
+	return true
 }

@@ -1,18 +1,19 @@
 /*
-Copyright 2022.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package controllers
 
@@ -217,9 +218,9 @@ var _ = Describe("Submarine controller", func() {
 			err := k8sClient.Get(ctx, types.NamespacedName{Name: virtualServiceName, Namespace: submarineNamespaceDefaultCR}, createdVirtualService)
 			Expect(err).To(BeNil())
 
-			// The default value for host is <submarine namespace>.submarine
-			Expect(createdVirtualService.Spec.Hosts[0]).To(Equal(submarineNamespaceDefaultCR + ".submarine"))
-			// The default value for gateway is submarine-cloud-v3-system/submarine-gateway
+			// The default value for host is *
+			Expect(createdVirtualService.Spec.Hosts[0]).To(Equal("*"))
+			// The default value for gateway is ${namespace}/submarine-gateway
 			Expect(createdVirtualService.Spec.Gateways[0]).To(Equal("submarine-cloud-v3-system/submarine-gateway"))
 		})
 		It(fmt.Sprintf("Hosts and Gateways should have custom values In %s", submarineNamespaceCustomCR), func() {

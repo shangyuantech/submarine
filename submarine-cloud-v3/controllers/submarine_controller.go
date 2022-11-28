@@ -1,18 +1,19 @@
 /*
-Copyright 2022.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package controllers
 
@@ -59,6 +60,7 @@ const (
 	artifactPath           = "./artifacts/"
 	databaseYamlPath       = artifactPath + "submarine-database.yaml"
 	minioYamlPath          = artifactPath + "submarine-minio.yaml"
+	serveYamlPath          = artifactPath + "submarine-serve.yaml"
 	mlflowYamlPath         = artifactPath + "submarine-mlflow.yaml"
 	serverYamlPath         = artifactPath + "submarine-server.yaml"
 	tensorboardYamlPath    = artifactPath + "submarine-tensorboard.yaml"
@@ -112,6 +114,7 @@ type SubmarineReconciler struct {
 	Log      logr.Logger
 	Recorder record.EventRecorder
 	// Fields required by submarine
+	Namespace               string
 	ClusterType             string
 	CreatePodSecurityPolicy bool
 }
@@ -197,7 +200,8 @@ func (r *SubmarineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			submarineCopy.Status.State = submarineapacheorgv1alpha1.CreatingState
 			r.recordSubmarineEvent(submarineCopy)
 		}
-	case submarineapacheorgv1alpha1.CreatingState:
+	// If an event is performed in a failed state, we also need to process it
+	case submarineapacheorgv1alpha1.CreatingState, submarineapacheorgv1alpha1.FailedState:
 		if err := r.createSubmarine(ctx, submarineCopy); err != nil {
 			submarineCopy.Status.State = submarineapacheorgv1alpha1.FailedState
 			submarineCopy.Status.ErrorMessage = err.Error()
@@ -211,6 +215,7 @@ func (r *SubmarineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 		if ok {
 			submarineCopy.Status.State = submarineapacheorgv1alpha1.RunningState
+			submarineCopy.Status.ErrorMessage = ""
 			r.recordSubmarineEvent(submarineCopy)
 		}
 	case submarineapacheorgv1alpha1.RunningState:
@@ -224,7 +229,9 @@ func (r *SubmarineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// Update STATUS of Submarine
 	err = r.updateSubmarineStatus(ctx, submarine, submarineCopy)
 	if err != nil {
-		return ctrl.Result{}, err
+		submarineCopy.Status.State = submarineapacheorgv1alpha1.FailedState
+		submarineCopy.Status.ErrorMessage = err.Error()
+		r.recordSubmarineEvent(submarineCopy)
 	}
 
 	// Re-run Reconcile regularly
@@ -239,10 +246,12 @@ func (r *SubmarineReconciler) updateSubmarineStatus(ctx context.Context, submari
 	err := r.Get(ctx, types.NamespacedName{Name: serverName, Namespace: submarine.Namespace}, serverDeployment)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			submarineCopy.Status.AvailableServerReplicas = serverDeployment.Status.AvailableReplicas
+			submarineCopy.Status.AvailableServerReplicas = 0
 		} else {
 			return err
 		}
+	} else {
+		submarineCopy.Status.AvailableServerReplicas = serverDeployment.Status.AvailableReplicas
 	}
 
 	// Update database replicas
@@ -250,10 +259,12 @@ func (r *SubmarineReconciler) updateSubmarineStatus(ctx context.Context, submari
 	err = r.Get(ctx, types.NamespacedName{Name: databaseName, Namespace: submarine.Namespace}, statefulset)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			submarineCopy.Status.AvailableDatabaseReplicas = statefulset.Status.ReadyReplicas
+			submarineCopy.Status.AvailableDatabaseReplicas = 0
 		} else {
 			return err
 		}
+	} else {
+		submarineCopy.Status.AvailableDatabaseReplicas = statefulset.Status.ReadyReplicas
 	}
 
 	// Skip update if nothing changed.
@@ -327,6 +338,11 @@ func (r *SubmarineReconciler) createSubmarine(ctx context.Context, submarine *su
 	}
 
 	err = r.createSubmarineMinio(ctx, submarine)
+	if err != nil && !errors.IsAlreadyExists(err) {
+		return err
+	}
+
+	err = r.createSubmarineServe(ctx, submarine)
 	if err != nil && !errors.IsAlreadyExists(err) {
 		return err
 	}
@@ -426,4 +442,13 @@ func (r *SubmarineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&submarineapacheorgv1alpha1.Submarine{}).
 		Complete(r)
+}
+
+// CreatePullSecrets will convert `submarine.spec.common.image.pullSecrets` to []`corev1.LocalObjectReference`
+func (r *SubmarineReconciler) CreatePullSecrets(pullSecrets *[]string) []corev1.LocalObjectReference {
+	secrets := make([]corev1.LocalObjectReference, 0)
+	for _, secret := range *pullSecrets {
+		secrets = append(secrets, corev1.LocalObjectReference{Name: secret})
+	}
+	return secrets
 }
