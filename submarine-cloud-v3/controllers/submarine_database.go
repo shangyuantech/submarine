@@ -22,13 +22,12 @@ import (
 	"fmt"
 	"github.com/apache/submarine/submarine-cloud-v3/controllers/util"
 
+	submarineapacheorgv1alpha1 "github.com/apache/submarine/submarine-cloud-v3/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-
-	submarineapacheorgv1alpha1 "github.com/apache/submarine/submarine-cloud-v3/api/v1alpha1"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -56,6 +55,19 @@ func (r *SubmarineReconciler) newSubmarineDatabaseStatefulSet(ctx context.Contex
 	err = controllerutil.SetControllerReference(submarine, statefulset, r.Scheme)
 	if err != nil {
 		r.Log.Error(err, "Set Stateful Set ControllerReference")
+	}
+
+	// password secret
+	if submarine.Spec.Database.MysqlRootPasswordSecret != "" {
+		statefulset.Spec.Template.Spec.Containers[0].Env[0].Value = ""
+		statefulset.Spec.Template.Spec.Containers[0].Env[0].ValueFrom = &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: submarine.Spec.Database.MysqlRootPasswordSecret,
+				},
+				Key: "MYSQL_ROOT_PASSWORD",
+			},
+		}
 	}
 
 	// database image
@@ -123,6 +135,15 @@ func (r *SubmarineReconciler) createSubmarineDatabase(ctx context.Context, subma
 		statefulset = r.newSubmarineDatabaseStatefulSet(ctx, submarine)
 		err = r.Create(ctx, statefulset)
 		r.Log.Info("Create StatefulSet", "name", statefulset.Name)
+	} else {
+		newSatefulset := r.newSubmarineDatabaseStatefulSet(ctx, submarine)
+		// compare if there are same
+		if !CompareDatabaseStatefulSet(statefulset, newSatefulset) {
+			// update meta with uid
+			newSatefulset.ObjectMeta = statefulset.ObjectMeta
+			err = r.Update(ctx, newSatefulset)
+			r.Log.Info("Update StatefulSet", "name", statefulset.Name)
+		}
 	}
 
 	// If an error occurs during Get/Create, we'll requeue the item so we can
@@ -166,4 +187,24 @@ func (r *SubmarineReconciler) createSubmarineDatabase(ctx context.Context, subma
 	}
 
 	return nil
+}
+
+// CompareDatabaseStatefulSet will determine if two StatefulSets are equal
+func CompareDatabaseStatefulSet(oldStfs, newStfs *appsv1.StatefulSet) bool {
+	// spec.replicas
+	if *oldStfs.Spec.Replicas != *newStfs.Spec.Replicas {
+		return false
+	}
+	if len(oldStfs.Spec.Template.Spec.Containers) != 1 {
+		return false
+	}
+	// spec.template.spec.containers[0].env
+	if !util.CompareEnv(oldStfs.Spec.Template.Spec.Containers[0].Env, newStfs.Spec.Template.Spec.Containers[0].Env) {
+		return false
+	}
+	// spec.template.spec.containers[0].image
+	if oldStfs.Spec.Template.Spec.Containers[0].Image != newStfs.Spec.Template.Spec.Containers[0].Image {
+		return false
+	}
+	return true
 }

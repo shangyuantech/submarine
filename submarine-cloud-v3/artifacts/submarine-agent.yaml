@@ -39,8 +39,6 @@ spec:
           failureThreshold: 3
           periodSeconds: 10
         env:
-        - name: SUBMARINE_UID
-          value: "d6b99082-2dfe-4144-8d0a-1bbbfc6b9f28"
         - name: JDBC_URL
           value: "jdbc:mysql://submarine-database:3306/submarine?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&allowMultiQueries=true&failOverReadOnly=false&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=UTC&useTimezone=true&useLegacyDatetimeCode=true"
         image: "apache/submarine:agent-0.8.0-SNAPSHOT"

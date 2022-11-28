@@ -58,6 +58,8 @@ type SubmarineSpec struct {
 	Minio *SubmarineMinioSpec `json:"minio"`
 	// Common is the spec that defines some submarine common configurations
 	Common *SubmarineCommon `json:"common,omitempty"`
+	// SubmarineAgent is the spec that defines the submarine agent
+	Agent *SubmarineAgent `json:"agent,omitempty"`
 }
 
 // SubmarineServerSpec defines the desired submarine server
@@ -77,8 +79,8 @@ type SubmarineDatabaseSpec struct {
 	Image string `json:"image,omitempty"`
 	// StorageSize is the storage size of the database
 	StorageSize string `json:"storageSize"`
-	// MysqlRootPasswordSecret is the mysql root password secret
-	MysqlRootPasswordSecret string `json:"mysqlRootPasswordSecret"`
+	// MysqlRootPasswordSecret is the mysql root password secret, secret must have key MYSQL_ROOT_PASSWORD as root password
+	MysqlRootPasswordSecret string `json:"mysqlRootPasswordSecret,omitempty"`
 }
 
 // SubmarineVirtualserviceSpec defines the desired submarine virtualservice
@@ -137,6 +139,12 @@ type CommonImage struct {
 	BusyboxImage string `json:"busybox,omitempty"`
 	// PullSecrets is a specified array of imagePullSecrets. This secrets must be manually created in the namespace.
 	PullSecrets []string `json:"pullSecrets,omitempty"`
+}
+
+// SubmarineAgent defines the observed submarine agent
+type SubmarineAgent struct {
+	// Image is the submarine agent's docker image
+	Image string `json:"image,omitempty"`
 }
 
 // SubmarineStatus defines the observed state of Submarine
