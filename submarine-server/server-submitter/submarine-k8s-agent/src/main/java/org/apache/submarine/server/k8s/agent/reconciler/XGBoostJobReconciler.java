@@ -35,7 +35,10 @@ import org.apache.submarine.server.k8s.agent.model.training.resource.XGBoostJob;
  * Label selectors reference:
  * https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#api
  */
-@ControllerConfiguration(labelSelector = "submarine-experiment-name")
+@ControllerConfiguration(
+    labelSelector = "submarine-experiment-name",
+    generationAwareEventProcessing = false
+)
 public class XGBoostJobReconciler extends JobReconciler<XGBoostJob> implements Reconciler<XGBoostJob> {
 
   @Override

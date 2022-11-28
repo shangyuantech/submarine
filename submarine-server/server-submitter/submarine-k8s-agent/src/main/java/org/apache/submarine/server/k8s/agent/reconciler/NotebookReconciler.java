@@ -50,7 +50,10 @@ import static org.apache.submarine.server.k8s.agent.SubmarineAgentListener.DTF;
  * Label selectors reference:
  * https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#api
  */
-@ControllerConfiguration(labelSelector = "notebook-id,notebook-owner-id")
+@ControllerConfiguration(
+    labelSelector = "notebook-id,notebook-owner-id",
+    generationAwareEventProcessing = false
+)
 public class NotebookReconciler implements Reconciler<NotebookResource> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NotebookReconciler.class);

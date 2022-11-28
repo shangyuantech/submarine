@@ -22,6 +22,7 @@ package org.apache.submarine.server.k8s.agent;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import io.javaoperatorsdk.operator.Operator;
+import io.javaoperatorsdk.operator.api.config.ControllerConfigurationOverrider;
 import io.javaoperatorsdk.operator.api.reconciler.Reconciler;
 import org.apache.submarine.commons.utils.exception.SubmarineRuntimeException;
 import org.apache.submarine.server.k8s.utils.OwnerReferenceConfig;
@@ -55,13 +56,12 @@ public class SubmarineAgentListener {
     // scan all Reconciler implemented subclasses
     Reflections reflections = new Reflections("org.apache.submarine.server.k8s.agent");
     Set<Class<? extends Reconciler>> reconcilers = reflections.getSubTypesOf(Reconciler.class);
-    String namespace = client.getNamespace();
     reconcilers.forEach(reconciler ->
         {
           try {
-            LOGGER.info("Register {} in namespace {} ...", reconciler.getName(), namespace);
+            LOGGER.info("Register {} ...", reconciler.getName());
             operator.register(reconciler.getDeclaredConstructor().newInstance(),
-                config -> config.settingNamespace(namespace)
+                ControllerConfigurationOverrider::watchingOnlyCurrentNamespace
             );
           } catch (Exception e) {
             throw new SubmarineRuntimeException("Can not new instance " + reconciler.getName());
