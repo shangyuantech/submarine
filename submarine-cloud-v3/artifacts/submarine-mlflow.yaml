@@ -68,7 +68,7 @@ spec:
         command: ["/bin/bash", "-c",
         "cnt=0;
         while ! /bin/bash -c 'mc --config-dir /root/.mc config host add minio http://submarine-minio-service:9000
-        submarine_minio submarine_minio' 2>&1;
+        ${MINIO_ACCESS_KEY} ${MINIO_SECRET_KEY}' 2>&1;
         do
           sleep 15;
           ((cnt=cnt+1));
@@ -85,6 +85,17 @@ spec:
         volumeMounts:
           - name: mc-config-vol
             mountPath: /root/.mc
+        env:
+          - name: MINIO_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: submarine-minio-secret
+                key: MINIO_ACCESS_KEY
+          - name: MINIO_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: submarine-minio-secret
+                key: MINIO_SECRET_KEY
       containers:
       - name: submarine-mlflow-container
         image: apache/submarine:mlflow-0.8.0-SNAPSHOT
