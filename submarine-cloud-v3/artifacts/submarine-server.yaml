@@ -103,7 +103,16 @@ spec:
           value: "8080"
         - name: K8S_APISERVER_URL
           value: "kubernetes.default.svc"
-
+        - name: SUBMARINE_S3_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: submarine-minio-secret
+              key: MINIO_ACCESS_KEY
+        - name: SUBMARINE_S3_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: submarine-minio-secret
+              key: MINIO_SECRET_KEY
         image: "apache/submarine:server-0.8.0-SNAPSHOT"
         imagePullPolicy: IfNotPresent
         ports:
