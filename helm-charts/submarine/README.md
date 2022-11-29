@@ -34,10 +34,15 @@ helm template --debug submarine ./helm-charts/submarine -n submarine
 To install the chart with the release name `submarine`:
 
 ```shell
+# create namespace
+export NAMESPACE=submarine
+kubectl create namespace ${NAMESPACE}
+
 # We have also integrated seldon-core install by helm, thus we need to update our dependency.
 helm dependency update ./helm-charts/submarine
-# install submarine operator
-helm install submarine ./helm-charts/submarine -n submarine
+
+# Install submarine operator in namespace submarine
+helm install submarine ./helm-charts/submarine --set seldon-core-operator.istio.gateway=${NAMESPACE}/seldon-gateway -n ${NAMESPACE}
 ```
 
 ## Upgrading the Chart
@@ -63,7 +68,7 @@ incompatible breaking change needing manual actions.
 
 ### To 0.8.0
 
-This version requires Helm >= 3.1.0.  
+This version requires Helm >= 3.1.0.
 This version is a major change, we migrated `traefik` to `istio` and upgraded the `operator`. You need to backup the database and redeploy.
 
 ## Configuration

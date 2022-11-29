@@ -86,6 +86,10 @@ func (r *SubmarineReconciler) newSubmarineServerDeployment(ctx context.Context, 
 			Name:  "SUBMARINE_UID",
 			Value: string(submarine.UID),
 		},
+		{
+			Name:  "SUBMARINE_SELDON_GATEWAY",
+			Value: r.SeldonGateway,
+		},
 	}
 	// extra envs
 	extraEnv := submarine.Spec.Server.Env
@@ -231,30 +235,48 @@ func CompareServerDeployment(oldDeployment, newDeployment *appsv1.Deployment) bo
 	if *oldDeployment.Spec.Replicas != *newDeployment.Spec.Replicas {
 		return false
 	}
+
 	if len(oldDeployment.Spec.Template.Spec.Containers) != 1 {
 		return false
 	}
 	// spec.template.spec.containers[0].env
-	if !util.CompareEnv(oldDeployment.Spec.Template.Spec.Containers[0].Env, newDeployment.Spec.Template.Spec.Containers[0].Env) {
+	if !util.CompareEnv(oldDeployment.Spec.Template.Spec.Containers[0].Env,
+		newDeployment.Spec.Template.Spec.Containers[0].Env) {
 		return false
 	}
 	// spec.template.spec.containers[0].image
-	if oldDeployment.Spec.Template.Spec.Containers[0].Image != newDeployment.Spec.Template.Spec.Containers[0].Image {
+	if oldDeployment.Spec.Template.Spec.Containers[0].Image !=
+		newDeployment.Spec.Template.Spec.Containers[0].Image {
+		return false
+	}
+
+	if len(oldDeployment.Spec.Template.Spec.InitContainers) != 2 {
 		return false
 	}
 	// spec.template.spec.initContainers[0].image
-	if len(oldDeployment.Spec.Template.Spec.InitContainers) != 1 {
-		return false
-	}
-	if oldDeployment.Spec.Template.Spec.InitContainers[0].Image != newDeployment.Spec.Template.Spec.InitContainers[0].Image {
+	if oldDeployment.Spec.Template.Spec.InitContainers[0].Image != newDeployment.
+		Spec.Template.Spec.InitContainers[0].Image {
 		return false
 	}
 	// spec.template.spec.initContainers[0].command
-	if !util.CompareSlice(oldDeployment.Spec.Template.Spec.InitContainers[0].Command, newDeployment.Spec.Template.Spec.InitContainers[0].Command) {
+	if !util.CompareSlice(oldDeployment.Spec.Template.Spec.InitContainers[0].Command,
+		newDeployment.Spec.Template.Spec.InitContainers[0].Command) {
 		return false
 	}
+	// spec.template.spec.initContainers[1].image
+	if oldDeployment.Spec.Template.Spec.InitContainers[1].Image !=
+		newDeployment.Spec.Template.Spec.InitContainers[1].Image {
+		return false
+	}
+	// spec.template.spec.initContainers[1].command
+	if !util.CompareSlice(oldDeployment.Spec.Template.Spec.InitContainers[1].Command,
+		newDeployment.Spec.Template.Spec.InitContainers[1].Command) {
+		return false
+	}
+
 	// spec.template.spec.imagePullSecrets
-	if !util.ComparePullSecrets(oldDeployment.Spec.Template.Spec.ImagePullSecrets, newDeployment.Spec.Template.Spec.ImagePullSecrets) {
+	if !util.ComparePullSecrets(oldDeployment.Spec.Template.Spec.ImagePullSecrets,
+		newDeployment.Spec.Template.Spec.ImagePullSecrets) {
 		return false
 	}
 	return true

@@ -51,7 +51,7 @@ istio:
   # Use Istio default gateway implementation,
   # you can find the specified gateway service with this labels by the command:
   # kubectl get service -n istio-system -l istio=ingressgateway
-  gatewaySelector: 
+  gatewaySelector:
     istio: ingressgateway
 
 # training operator
