@@ -57,6 +57,7 @@ Run the submarine operator.
 make install
 
 # Step2: Run the operator in a terminal.
+kubectl config set-context --current --namespace=submarine-cloud-v3-system
 make run
 
 # Step3: Deploy a submarine.
