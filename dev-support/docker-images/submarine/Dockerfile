@@ -23,10 +23,7 @@ MAINTAINER Apache Software Foundation <dev@submarine.apache.org>
 
 # INSTALL openjdk
 RUN apk update && \
-    apk add --no-cache openjdk11 tzdata bash tini&& \
-    cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
-    echo Asia/Shanghai > /etc/timezone && \
-    apk del tzdata && \
+    apk add --no-cache openjdk11 bash tini && \
     rm -rf /tmp/* /var/cache/apk/*
 
 ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk/jre
