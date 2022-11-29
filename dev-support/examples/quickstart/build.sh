@@ -32,8 +32,10 @@ then
   rm -rf "${CURRENT_PATH}/tmp"
 fi
 
-mkdir -p "${CURRENT_PATH}/tmp"
-cp -r "${SUBMARINE_HOME}/submarine-sdk" "${CURRENT_PATH}/tmp"
+mkdir -p "${CURRENT_PATH}/tmp/submarine-sdk/pysubmarine"
+cd "${SUBMARINE_HOME}/submarine-sdk/pysubmarine"
+# Exclude the `venv` folder under dev and copy it
+cp -r `ls | grep -v venv | xargs` "${CURRENT_PATH}/tmp/submarine-sdk/pysubmarine"
 
 # build image
 cd ${CURRENT_PATH}

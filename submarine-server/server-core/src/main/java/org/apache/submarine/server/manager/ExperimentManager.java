@@ -357,7 +357,7 @@ public class ExperimentManager {
     experiment.setExperimentId(ExperimentId.fromString(entity.getId()));
     experiment.setSpec(new Gson().fromJson(entity.getExperimentSpec(), ExperimentSpec.class));
     experiment.setStatus(entity.getExperimentStatus());
-    
+
     if (entity.getCreateTime() != null) {
       experiment.setCreatedTime(new DateTime(entity.getCreateTime()).toString());
     } else {
@@ -379,7 +379,7 @@ public class ExperimentManager {
       experiment.setFinishedTime(null);
     }
     experiment.setUid(entity.getUid());
-    
+
     return experiment;
   }
 
@@ -396,7 +396,7 @@ public class ExperimentManager {
     if (experiment.getCreatedTime() != null) {
       entity.setCreateTime(DateTime.parse(experiment.getCreatedTime()).toDate());
     } else {
-      entity.setCreateTime(null);  
+      entity.setCreateTime(null);
     }
     if (experiment.getAcceptedTime() != null) {
       entity.setAcceptedTime(DateTime.parse(experiment.getAcceptedTime()).toDate());
@@ -406,7 +406,7 @@ public class ExperimentManager {
     if (experiment.getRunningTime() != null) {
       entity.setRunningTime(DateTime.parse(experiment.getRunningTime()).toDate());
     } else {
-      entity.setRunningTime(null);      
+      entity.setRunningTime(null);
     }
     if (experiment.getFinishedTime() != null) {
       entity.setFinishedTime(DateTime.parse(experiment.getFinishedTime()).toDate());
