@@ -62,7 +62,7 @@ spec:
         command: ["sh", "-c",
         "until nc -z submarine-database 3306;
         do echo waiting for database connection;
-        sleep 20; done"]
+        sleep 10; done"]
       - name: submarine-mlflow-initcontainer
         image: "minio/mc"
         command: ["/bin/bash", "-c",

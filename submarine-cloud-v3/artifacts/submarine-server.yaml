@@ -58,6 +58,12 @@ spec:
     spec:
       serviceAccountName: "submarine-server"
       initContainers:
+      - name: check-database-connection
+        image: busybox:1.28
+        command: [ "sh", "-c",
+        "until nc -z submarine-database 3306;
+        do echo waiting for database connection;
+        sleep 10; done" ]
       - name: submarine-server-initcontainer
         image: "minio/mc"
         command: ["/bin/bash", "-c",
