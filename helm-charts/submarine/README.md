@@ -58,7 +58,7 @@ helm upgrade submarine ./helm-charts/submarine -n submarine
 To uninstall/delete the `subamrine` deployment:
 
 ```shell
-helm uninstall subamrine -n submarine
+helm uninstall submarine -n submarine
 ```
 
 ## Upgrading an existing Release to a new major version
