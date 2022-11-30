@@ -278,7 +278,7 @@ Metadata:
     ...
 Spec:
   Gateways:
-    istio-system/seldon-gateway
+    submarine/seldon-gateway
   Hosts:
     *
   Http:
@@ -294,6 +294,8 @@ Spec:
           Number:  8000
 Events:            <none>
 ```
+
+And then you can use `http://localhost:32080/seldon/submarine-user-test/1/1/api/v1.0/doc/` to access the `swagger-ui` to get the REST api details
 
 6. After successfully serving the model, we can test the results of serving using the test python code [serve_predictions.py](https://github.com/apache/submarine/blob/master/dev-support/examples/quickstart/serve_predictions.py)
 

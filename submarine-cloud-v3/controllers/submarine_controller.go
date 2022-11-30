@@ -117,6 +117,7 @@ type SubmarineReconciler struct {
 	Recorder record.EventRecorder
 	// Fields required by submarine
 	SeldonGateway           string
+	SubmarineGateway        string
 	Namespace               string
 	ClusterType             string
 	CreatePodSecurityPolicy bool
