@@ -29,6 +29,7 @@
   z-index: 10;
   min-height: 100vh;
   box-shadow: 2px 0 6px rgba(0, 21, 41, .35);
+  display: none;// 注释掉菜单备注
 }
 
 .header-trigger {
@@ -36,6 +37,7 @@
   font-size: 20px;
   cursor: pointer;
   transition: all .3s, padding 0s;
+  display: none;// 注释掉菜单备注
 }
 
 .operation-user-info {
@@ -81,6 +83,7 @@ nz-header {
   padding: 0;
   width: 100%;
   z-index: 2;
+  display: none;// 注释掉菜单备注
 }
 
 .app-header {
@@ -104,8 +107,7 @@ nz-content {
 }
 
 nz-layout {
-  max-width: calc(100% - 256px);
-
+  max-width: 100%;// 注释掉菜单备注
   &.close {
     max-width: calc(100% - 80px);
   }

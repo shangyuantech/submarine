@@ -145,6 +145,8 @@ export class WorkbenchComponent implements OnInit {
 
   ngOnInit() {
     if (this.authService.isLoggedIn) {
+      // 注释掉菜单备注
+      /* 源代码
       this.userInfo$ = this.userService.fetchUserInfo().pipe(
         tap((userInfo) => {
           this.nzNotificationService.success(this.translate.instant('Welcome'),
@@ -152,6 +154,8 @@ export class WorkbenchComponent implements OnInit {
           );
         })
       );
+       */
+      this.userInfo$ = this.userService.fetchUserInfo();
     }
   }
 
