@@ -27,7 +27,7 @@ import TRANSLATE_CONFIG from "@submarine/core/local-translate";
 
 @NgModule({
   declarations: [PageLayoutComponent],
-  imports: [CommonModule, RouterModule, NgZorroAntdModule,TranslateModule.forChild(TRANSLATE_CONFIG)],
-  exports: [PageLayoutComponent] 
+  imports: [CommonModule, RouterModule, NgZorroAntdModule, TranslateModule.forChild(TRANSLATE_CONFIG)],
+  exports: [PageLayoutComponent]
 })
 export class ComponentsModule {}

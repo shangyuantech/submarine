@@ -27,7 +27,8 @@ import zh from '@angular/common/locales/zh'
 import { FormsModule } from '@angular/forms';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { LocalStorageService } from '@submarine/services';
-import { en_US, zh_CN, NgZorroAntdModule, NZ_I18N } from 'ng-zorro-antd';
+import { NgZorroAntdModule, NZ_I18N } from 'ng-zorro-antd';
+import { localeDict } from '@submarine/pages/workbench/utils/locale-dict'
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { IconsProviderModule } from './icons-provider.module';
@@ -46,7 +47,7 @@ registerLocaleData(zh);
     HttpClientModule,
     BrowserAnimationsModule
   ],
-  providers: [{ provide: NZ_I18N, useValue: en_US }, LocalStorageService],
+  providers: [{provide: NZ_I18N, useValue: localeDict[localStorage.getItem('translate')]}, LocalStorageService],
   bootstrap: [AppComponent]
 })
 export class AppModule {}
