@@ -22,10 +22,9 @@ import {Router} from '@angular/router';
 import {TranslateService} from '@ngx-translate/core';
 import {UserInfo} from '@submarine/interfaces';
 import {AuthService, UserService} from '@submarine/services';
-import {NzNotificationService} from 'ng-zorro-antd';
-import {Observable} from 'rxjs';
+import { en_US, zh_CN, NzI18nService, NzNotificationService } from 'ng-zorro-antd';
 // import {tap} from 'rxjs/operators';
-import { en_US,zh_CN, NzI18nService } from 'ng-zorro-antd'
+import {Observable} from 'rxjs';
 
 interface SidebarMenu {
   title: string;
@@ -143,7 +142,7 @@ export class WorkbenchComponent implements OnInit {
     console.log(`change language to ${lang}`)
     // save to localStorage in order to refresh the page can correctly display the language
     localStorage.setItem('translate', lang);
-    this.i18n.setLocale(lang==='en'?en_US:zh_CN);
+    this.i18n.setLocale(lang === 'en' ? en_US : zh_CN);
   }
 
   ngOnInit() {
