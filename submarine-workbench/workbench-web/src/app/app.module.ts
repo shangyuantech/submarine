@@ -28,7 +28,8 @@ import { FormsModule } from '@angular/forms';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { ApiTokenInjector } from "@submarine/core/auth/api-token-injector";
 import { LocalStorageService } from '@submarine/services';
-import { en_US, zh_CN, NgZorroAntdModule, NZ_I18N } from 'ng-zorro-antd';
+import { NgZorroAntdModule, NZ_I18N } from 'ng-zorro-antd';
+import { localeDict } from '@submarine/pages/workbench/utils/locale-dict'
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { IconsProviderModule } from './icons-provider.module';
@@ -48,7 +49,7 @@ registerLocaleData(zh);
     BrowserAnimationsModule
   ],
   providers: [
-    { provide: NZ_I18N, useValue: en_US },
+    { provide: NZ_I18N, useValue: localeDict[localStorage.getItem('translate')] },
     // add injector to set header a token when calling rest api
     { provide: HTTP_INTERCEPTORS, useClass: ApiTokenInjector, multi: true },
     LocalStorageService
