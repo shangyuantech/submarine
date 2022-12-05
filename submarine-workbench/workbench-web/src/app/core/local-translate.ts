@@ -25,9 +25,9 @@ export function httpLoaderFactory(http: HttpClient) {
   return new TranslateHttpLoader(http);
 }
 
-function getDefaultLang() {
+export function getDefaultLang() {
   const lang = localStorage.getItem('translate');
-  return lang === null || lang.length === 0 ? 'zh-cn' : lang;
+  return lang === null || lang.length === 0 ? 'zh_CN' : lang;
 }
 
 const TRANSLATE_CONFIG = {

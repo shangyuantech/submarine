@@ -21,12 +21,11 @@ import {Component, OnInit} from '@angular/core';
 import {Router} from '@angular/router';
 import {TranslateService} from '@ngx-translate/core';
 import {UserInfo} from '@submarine/interfaces';
-import {AuthService, UserService} from '@submarine/services';
-import {NzNotificationService} from 'ng-zorro-antd';
-import {Observable} from 'rxjs';
 // import {tap} from 'rxjs/operators';
-import {NzI18nService} from 'ng-zorro-antd'
 import {localeDict} from '@submarine/pages/workbench/utils/locale-dict'
+import {AuthService, UserService} from '@submarine/services';
+import { NzI18nService, NzNotificationService } from 'ng-zorro-antd';
+import {Observable} from 'rxjs';
 
 interface SidebarMenu {
   title: string;
@@ -149,6 +148,8 @@ export class WorkbenchComponent implements OnInit {
 
   ngOnInit() {
     if (this.authService.isLoggedIn) {
+      // 注释掉菜单备注
+      /* 源代码
       this.userInfo$ = this.userService.fetchUserInfo().pipe(
         tap((userInfo) => {
           this.nzNotificationService.success(this.translate.instant('Welcome'),
@@ -156,6 +157,8 @@ export class WorkbenchComponent implements OnInit {
           );
         })
       );
+       */
+      this.userInfo$ = this.userService.fetchUserInfo();
     }
   }
 
