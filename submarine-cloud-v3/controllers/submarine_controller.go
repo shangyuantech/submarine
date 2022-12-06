@@ -70,6 +70,7 @@ const (
 	observerRbacYamlPath   = artifactPath + "submarine-observer-rbac.yaml"
 	storageRbacYamlPath    = artifactPath + "submarine-storage-rbac.yaml"
 	virtualServiceYamlPath = artifactPath + "submarine-virtualservice.yaml"
+	istioSidecarUid        = 1337
 )
 
 // Name of deployments whose replica count and readiness need to be checked
@@ -116,8 +117,10 @@ type SubmarineReconciler struct {
 	Log      logr.Logger
 	Recorder record.EventRecorder
 	// Fields required by submarine
-	SeldonGateway           string
+	IstioEnable             bool
 	SubmarineGateway        string
+	SeldonIstioEnable       bool
+	SeldonGateway           string
 	Namespace               string
 	ClusterType             string
 	CreatePodSecurityPolicy bool
