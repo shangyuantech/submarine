@@ -18,7 +18,7 @@ FWDIR="$(cd "$(dirname "$0")"; pwd)"
 cd "$FWDIR"
 
 SUBMARINE_PROJECT_PATH="$FWDIR/../.."
-SWAGGER_JAR_URL="https://repo1.maven.org/maven2/org/openapitools/openapi-generator-cli/4.3.1/openapi-generator-cli-4.3.1.jar"
+SWAGGER_JAR_URL="https://repo1.maven.org/maven2/org/openapitools/openapi-generator-cli/5.4.0/openapi-generator-cli-5.4.0.jar"
 SWAGGER_CODEGEN_JAR="openapi-generator-cli.jar"
 SWAGGER_CODEGEN_CONF="swagger_config.json"
 SWAGGER_CODEGEN_FILE="openapi.json"
