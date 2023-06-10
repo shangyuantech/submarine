@@ -455,7 +455,8 @@ class ModelSimple(OpenApiModel):
         )
 
     def __contains__(self, name):
-        """used by `in` operator to check if an attribute value was set in an instance: `'attr' in instance`"""
+        """used by `in` operator to check if an attribute value was set in an instance: `'attr' in instance`
+        """
         if name in self.required_properties:
             return name in self.__dict__
 
@@ -509,7 +510,8 @@ class ModelNormal(OpenApiModel):
         )
 
     def __contains__(self, name):
-        """used by `in` operator to check if an attribute value was set in an instance: `'attr' in instance`"""
+        """used by `in` operator to check if an attribute value was set in an instance: `'attr' in instance`
+        """
         if name in self.required_properties:
             return name in self.__dict__
 
@@ -654,7 +656,8 @@ class ModelComposed(OpenApiModel):
         return value
 
     def __contains__(self, name):
-        """used by `in` operator to check if an attribute value was set in an instance: `'attr' in instance`"""
+        """used by `in` operator to check if an attribute value was set in an instance: `'attr' in instance`
+        """
 
         if name in self.required_properties:
             return name in self.__dict__
@@ -881,8 +884,8 @@ def check_validations(validations, input_variable_path, input_values, configurat
     ):
         # Note 'multipleOf' will be as good as the floating point arithmetic.
         raise ApiValueError(
-            "Invalid value for `%s`, value must be a multiple of "
-            "`%s`" % (input_variable_path[0], current_validations['multiple_of'])
+            "Invalid value for `%s`, value must be a multiple of `%s`"
+            % (input_variable_path[0], current_validations['multiple_of'])
         )
 
     if (
@@ -891,8 +894,8 @@ def check_validations(validations, input_variable_path, input_values, configurat
         and len(input_values) > current_validations['max_length']
     ):
         raise ApiValueError(
-            "Invalid value for `%s`, length must be less than or equal to "
-            "`%s`" % (input_variable_path[0], current_validations['max_length'])
+            "Invalid value for `%s`, length must be less than or equal to `%s`"
+            % (input_variable_path[0], current_validations['max_length'])
         )
 
     if (
@@ -901,8 +904,8 @@ def check_validations(validations, input_variable_path, input_values, configurat
         and len(input_values) < current_validations['min_length']
     ):
         raise ApiValueError(
-            "Invalid value for `%s`, length must be greater than or equal to "
-            "`%s`" % (input_variable_path[0], current_validations['min_length'])
+            "Invalid value for `%s`, length must be greater than or equal to `%s`"
+            % (input_variable_path[0], current_validations['min_length'])
         )
 
     if (
@@ -911,8 +914,8 @@ def check_validations(validations, input_variable_path, input_values, configurat
         and len(input_values) > current_validations['max_items']
     ):
         raise ApiValueError(
-            "Invalid value for `%s`, number of items must be less than or "
-            "equal to `%s`" % (input_variable_path[0], current_validations['max_items'])
+            "Invalid value for `%s`, number of items must be less than or equal to `%s`"
+            % (input_variable_path[0], current_validations['max_items'])
         )
 
     if (
@@ -921,8 +924,8 @@ def check_validations(validations, input_variable_path, input_values, configurat
         and len(input_values) < current_validations['min_items']
     ):
         raise ValueError(
-            "Invalid value for `%s`, number of items must be greater than or "
-            "equal to `%s`" % (input_variable_path[0], current_validations['min_items'])
+            "Invalid value for `%s`, number of items must be greater than or equal to `%s`"
+            % (input_variable_path[0], current_validations['min_items'])
         )
 
     items = ('exclusive_maximum', 'inclusive_maximum', 'exclusive_minimum', 'inclusive_minimum')
@@ -953,8 +956,8 @@ def check_validations(validations, input_variable_path, input_values, configurat
         and max_val > current_validations['inclusive_maximum']
     ):
         raise ApiValueError(
-            "Invalid value for `%s`, must be a value less than or equal to "
-            "`%s`" % (input_variable_path[0], current_validations['inclusive_maximum'])
+            "Invalid value for `%s`, must be a value less than or equal to `%s`"
+            % (input_variable_path[0], current_validations['inclusive_maximum'])
         )
 
     if (
@@ -973,8 +976,8 @@ def check_validations(validations, input_variable_path, input_values, configurat
         and min_val < current_validations['inclusive_minimum']
     ):
         raise ApiValueError(
-            "Invalid value for `%s`, must be a value greater than or equal "
-            "to `%s`" % (input_variable_path[0], current_validations['inclusive_minimum'])
+            "Invalid value for `%s`, must be a value greater than or equal to `%s`"
+            % (input_variable_path[0], current_validations['inclusive_minimum'])
         )
     flags = current_validations.get('regex', {}).get('flags', 0)
     if (
@@ -1677,7 +1680,7 @@ def type_error_message(var_value=None, var_name=None, valid_classes=None, key_ty
     if key_type:
         key_or_value = 'key'
     valid_classes_phrase = get_valid_classes_phrase(valid_classes)
-    msg = "Invalid type for variable '{0}'. Required {1} type {2} and " "passed type was {3}".format(
+    msg = "Invalid type for variable '{0}'. Required {1} type {2} and passed type was {3}".format(
         var_name,
         key_or_value,
         valid_classes_phrase,
@@ -1715,7 +1718,6 @@ def get_allof_instances(self, model_args, constant_args):
     """
     composed_instances = []
     for allof_class in self._composed_schemas['allOf']:
-
         try:
             if constant_args.get('_spec_property_naming'):
                 allof_instance = allof_class._from_openapi_data(**model_args, **constant_args)
@@ -1803,12 +1805,14 @@ def get_oneof_instance(cls, model_kwargs, constant_kwargs, model_arg=None):
     if len(oneof_instances) == 0:
         raise ApiValueError(
             "Invalid inputs given to generate an instance of %s. None "
-            "of the oneOf schemas matched the input data." % cls.__name__
+            "of the oneOf schemas matched the input data."
+            % cls.__name__
         )
     elif len(oneof_instances) > 1:
         raise ApiValueError(
             "Invalid inputs given to generate an instance of %s. Multiple "
-            "oneOf schemas matched the inputs, but a max of one is allowed." % cls.__name__
+            "oneOf schemas matched the inputs, but a max of one is allowed."
+            % cls.__name__
         )
     return oneof_instances[0]
 
@@ -1850,7 +1854,8 @@ def get_anyof_instances(self, model_args, constant_args):
     if len(anyof_instances) == 0:
         raise ApiValueError(
             "Invalid inputs given to generate an instance of %s. None of the "
-            "anyOf schemas matched the inputs." % self.__class__.__name__
+            "anyOf schemas matched the inputs."
+            % self.__class__.__name__
         )
     return anyof_instances
 

@@ -149,7 +149,6 @@ class ApiClient(object):
         _check_type: typing.Optional[bool] = None,
         _content_type: typing.Optional[str] = None,
     ):
-
         config = self.configuration
 
         # header parameters
@@ -538,7 +537,7 @@ class ApiClient(object):
             )
         else:
             raise ApiValueError(
-                "http method must be `GET`, `HEAD`, `OPTIONS`," " `POST`, `PATCH`, `PUT` or `DELETE`."
+                "http method must be `GET`, `HEAD`, `OPTIONS`, `POST`, `PATCH`, `PUT` or `DELETE`."
             )
 
     def parameters_to_tuples(self, params, collection_formats):
@@ -597,8 +596,7 @@ class ApiClient(object):
                     continue
                 if file_instance.closed is True:
                     raise ApiValueError(
-                        "Cannot read a closed file. The passed in file_type "
-                        "for %s must be open." % param_name
+                        "Cannot read a closed file. The passed in file_type for %s must be open." % param_name
                     )
                 filename = os.path.basename(file_instance.name)
                 filedata = self.get_file_data_and_close_file(file_instance)
@@ -822,7 +820,6 @@ class Endpoint(object):
         return self.callable(self, *args, **kwargs)
 
     def call_with_http_info(self, **kwargs):
-
         try:
             index = (
                 self.api_client.configuration.server_operation_index.get(
@@ -847,8 +844,7 @@ class Endpoint(object):
         for key, value in kwargs.items():
             if key not in self.params_map['all']:
                 raise ApiTypeError(
-                    "Got an unexpected parameter '%s'"
-                    " to method `%s`" % (key, self.settings['operation_id'])
+                    "Got an unexpected parameter '%s' to method `%s`" % (key, self.settings['operation_id'])
                 )
             # only throw this nullable ApiValueError if _check_input_type
             # is False, if _check_input_type==True we catch this case
@@ -859,15 +855,15 @@ class Endpoint(object):
                 and kwargs['_check_input_type'] is False
             ):
                 raise ApiValueError(
-                    "Value may not be None for non-nullable parameter `%s`"
-                    " when calling `%s`" % (key, self.settings['operation_id'])
+                    "Value may not be None for non-nullable parameter `%s` when calling `%s`"
+                    % (key, self.settings['operation_id'])
                 )
 
         for key in self.params_map['required']:
             if key not in kwargs.keys():
                 raise ApiValueError(
-                    "Missing the required parameter `%s` when calling "
-                    "`%s`" % (key, self.settings['operation_id'])
+                    "Missing the required parameter `%s` when calling `%s`"
+                    % (key, self.settings['operation_id'])
                 )
 
         self.__validate_inputs(kwargs)

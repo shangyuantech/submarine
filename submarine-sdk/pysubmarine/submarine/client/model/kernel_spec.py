@@ -294,5 +294,5 @@ class KernelSpec(ModelNormal):
             if var_name in self.read_only_vars:
                 raise ApiAttributeError(
                     f"`{var_name}` is a read-only attribute. Use `from_openapi_data` to instantiate "
-                    f"class with read only attributes."
+                    "class with read only attributes."
                 )

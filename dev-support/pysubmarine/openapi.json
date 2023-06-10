@@ -174,6 +174,82 @@
         }
       }
     },
+    "/v1/experiment/logs/{id}" : {
+      "get" : {
+        "tags" : [ "experiment" ],
+        "summary" : "Log experiment by id",
+        "operationId" : "getLog",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Experiment not found"
+          }
+        }
+      }
+    },
+    "/v1/experiment/ping" : {
+      "get" : {
+        "tags" : [ "experiment" ],
+        "summary" : "Ping submarine server",
+        "description" : "Return the Pong message for test the connectivity",
+        "operationId" : "ping",
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/experiment/logs" : {
+      "get" : {
+        "tags" : [ "experiment" ],
+        "summary" : "List experiment's log",
+        "operationId" : "listLog",
+        "parameters" : [ {
+          "name" : "status",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "default" : {
+            "description" : "successful operation",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/JsonResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/experiment" : {
       "get" : {
         "tags" : [ "experiment" ],
@@ -446,82 +522,6 @@
         }
       }
     },
-    "/v1/experiment/logs/{id}" : {
-      "get" : {
-        "tags" : [ "experiment" ],
-        "summary" : "Log experiment by id",
-        "operationId" : "getLog",
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "default" : {
-            "description" : "successful operation",
-            "content" : {
-              "application/json; charset=utf-8" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/JsonResponse"
-                }
-              }
-            }
-          },
-          "404" : {
-            "description" : "Experiment not found"
-          }
-        }
-      }
-    },
-    "/v1/experiment/ping" : {
-      "get" : {
-        "tags" : [ "experiment" ],
-        "summary" : "Ping submarine server",
-        "description" : "Return the Pong message for test the connectivity",
-        "operationId" : "ping",
-        "responses" : {
-          "200" : {
-            "description" : "successful operation",
-            "content" : {
-              "application/json; charset=utf-8" : {
-                "schema" : {
-                  "type" : "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/experiment/logs" : {
-      "get" : {
-        "tags" : [ "experiment" ],
-        "summary" : "List experiment's log",
-        "operationId" : "listLog",
-        "parameters" : [ {
-          "name" : "status",
-          "in" : "query",
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "default" : {
-            "description" : "successful operation",
-            "content" : {
-              "application/json; charset=utf-8" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/JsonResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/v1/template" : {
       "get" : {
         "tags" : [ "experimentTemplates" ],
@@ -675,6 +675,26 @@
           },
           "404" : {
             "description" : "ExperimentTemplate not found"
+          }
+        }
+      }
+    },
+    "/v1/model-version/ping" : {
+      "get" : {
+        "tags" : [ "model-version" ],
+        "summary" : "Ping submarine server",
+        "description" : "Return the Pong message for test the connectivity",
+        "operationId" : "ping_1",
+        "responses" : {
+          "200" : {
+            "description" : "successful operation",
+            "content" : {
+              "application/json; charset=utf-8" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            }
           }
         }
       }
@@ -929,12 +949,12 @@
         }
       }
     },
-    "/v1/model-version/ping" : {
+    "/v1/notebook/ping" : {
       "get" : {
-        "tags" : [ "model-version" ],
+        "tags" : [ "notebook" ],
         "summary" : "Ping submarine server",
         "description" : "Return the Pong message for test the connectivity",
-        "operationId" : "ping_1",
+        "operationId" : "ping_2",
         "responses" : {
           "200" : {
             "description" : "successful operation",
@@ -1064,12 +1084,12 @@
         }
       }
     },
-    "/v1/notebook/ping" : {
+    "/v1/registered-model/ping" : {
       "get" : {
-        "tags" : [ "notebook" ],
+        "tags" : [ "registered-model" ],
         "summary" : "Ping submarine server",
         "description" : "Return the Pong message for test the connectivity",
-        "operationId" : "ping_2",
+        "operationId" : "ping_3",
         "responses" : {
           "200" : {
             "description" : "successful operation",
@@ -1301,12 +1321,12 @@
         }
       }
     },
-    "/v1/registered-model/ping" : {
+    "/v1/serve/ping" : {
       "get" : {
-        "tags" : [ "registered-model" ],
+        "tags" : [ "serve" ],
         "summary" : "Ping submarine server",
         "description" : "Return the Pong message for test the connectivity",
-        "operationId" : "ping_3",
+        "operationId" : "ping_4",
         "responses" : {
           "200" : {
             "description" : "successful operation",
@@ -1379,26 +1399,6 @@
           },
           "404" : {
             "description" : "Serve not found."
-          }
-        }
-      }
-    },
-    "/v1/serve/ping" : {
-      "get" : {
-        "tags" : [ "serve" ],
-        "summary" : "Ping submarine server",
-        "description" : "Return the Pong message for test the connectivity",
-        "operationId" : "ping_4",
-        "responses" : {
-          "200" : {
-            "description" : "successful operation",
-            "content" : {
-              "application/json; charset=utf-8" : {
-                "schema" : {
-                  "type" : "string"
-                }
-              }
-            }
           }
         }
       }
@@ -1567,13 +1567,13 @@
               "type" : "string"
             }
           },
-          "memory" : {
+          "gpu" : {
             "type" : "string"
           },
           "cpu" : {
             "type" : "string"
           },
-          "gpu" : {
+          "memory" : {
             "type" : "string"
           }
         }
@@ -1741,13 +1741,13 @@
           "resources" : {
             "type" : "string"
           },
-          "memory" : {
+          "gpu" : {
             "type" : "string"
           },
           "cpu" : {
             "type" : "string"
           },
-          "gpu" : {
+          "memory" : {
             "type" : "string"
           }
         }

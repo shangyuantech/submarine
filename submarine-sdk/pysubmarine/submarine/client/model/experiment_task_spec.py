@@ -110,9 +110,9 @@ class ExperimentTaskSpec(ModelNormal):
             'image': (str,),  # noqa: E501
             'cmd': (str,),  # noqa: E501
             'env_vars': ({str: (str,)},),  # noqa: E501
-            'memory': (str,),  # noqa: E501
-            'cpu': (str,),  # noqa: E501
             'gpu': (str,),  # noqa: E501
+            'cpu': (str,),  # noqa: E501
+            'memory': (str,),  # noqa: E501
         }
 
     @cached_property
@@ -126,9 +126,9 @@ class ExperimentTaskSpec(ModelNormal):
         'image': 'image',  # noqa: E501
         'cmd': 'cmd',  # noqa: E501
         'env_vars': 'envVars',  # noqa: E501
-        'memory': 'memory',  # noqa: E501
-        'cpu': 'cpu',  # noqa: E501
         'gpu': 'gpu',  # noqa: E501
+        'cpu': 'cpu',  # noqa: E501
+        'memory': 'memory',  # noqa: E501
     }
 
     read_only_vars = {}
@@ -177,9 +177,9 @@ class ExperimentTaskSpec(ModelNormal):
             image (str): [optional]  # noqa: E501
             cmd (str): [optional]  # noqa: E501
             env_vars ({str: (str,)}): [optional]  # noqa: E501
-            memory (str): [optional]  # noqa: E501
-            cpu (str): [optional]  # noqa: E501
             gpu (str): [optional]  # noqa: E501
+            cpu (str): [optional]  # noqa: E501
+            memory (str): [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
@@ -272,9 +272,9 @@ class ExperimentTaskSpec(ModelNormal):
             image (str): [optional]  # noqa: E501
             cmd (str): [optional]  # noqa: E501
             env_vars ({str: (str,)}): [optional]  # noqa: E501
-            memory (str): [optional]  # noqa: E501
-            cpu (str): [optional]  # noqa: E501
             gpu (str): [optional]  # noqa: E501
+            cpu (str): [optional]  # noqa: E501
+            memory (str): [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
@@ -314,5 +314,5 @@ class ExperimentTaskSpec(ModelNormal):
             if var_name in self.read_only_vars:
                 raise ApiAttributeError(
                     f"`{var_name}` is a read-only attribute. Use `from_openapi_data` to instantiate "
-                    f"class with read only attributes."
+                    "class with read only attributes."
                 )
