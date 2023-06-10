@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# coding: utf-8
-
 """
     Submarine API
 
@@ -27,16 +25,24 @@
 
 
 import io
+import ipaddress
 import json
 import logging
 import re
 import ssl
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
+from urllib.request import proxy_bypass_environment
 
-import certifi
 import urllib3
 
-from submarine.client.exceptions import ApiException, ApiValueError
+from submarine.client.exceptions import (
+    ApiException,
+    ApiValueError,
+    ForbiddenException,
+    NotFoundException,
+    ServiceException,
+    UnauthorizedException,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +63,7 @@ class RESTResponse(io.IOBase):
         return self.urllib3_response.getheader(name, default)
 
 
-class RESTClientObject:
+class RESTClientObject(object):
     def __init__(self, configuration, pools_size=4, maxsize=None):
         # urllib3.PoolManager will pass all kw parameters to connectionpool
         # https://github.com/shazow/urllib3/blob/f9409436f83aeb79fbaf090181cd81b784f1b8ce/urllib3/poolmanager.py#L75  # noqa: E501
@@ -71,19 +77,15 @@ class RESTClientObject:
         else:
             cert_reqs = ssl.CERT_NONE
 
-        # ca_certs
-        if configuration.ssl_ca_cert:
-            ca_certs = configuration.ssl_ca_cert
-        else:
-            # if not set certificate file, use Mozilla's root certificates.
-            ca_certs = certifi.where()
-
         addition_pool_args = {}
         if configuration.assert_hostname is not None:
-            addition_pool_args["assert_hostname"] = configuration.assert_hostname  # noqa: E501
+            addition_pool_args['assert_hostname'] = configuration.assert_hostname  # noqa: E501
 
         if configuration.retries is not None:
-            addition_pool_args["retries"] = configuration.retries
+            addition_pool_args['retries'] = configuration.retries
+
+        if configuration.socket_options is not None:
+            addition_pool_args['socket_options'] = configuration.socket_options
 
         if maxsize is None:
             if configuration.connection_pool_maxsize is not None:
@@ -92,12 +94,14 @@ class RESTClientObject:
                 maxsize = 4
 
         # https pool manager
-        if configuration.proxy:
+        if configuration.proxy and not should_bypass_proxies(
+            configuration.host, no_proxy=configuration.no_proxy or ''
+        ):
             self.pool_manager = urllib3.ProxyManager(
                 num_pools=pools_size,
                 maxsize=maxsize,
                 cert_reqs=cert_reqs,
-                ca_certs=ca_certs,
+                ca_certs=configuration.ssl_ca_cert,
                 cert_file=configuration.cert_file,
                 key_file=configuration.key_file,
                 proxy_url=configuration.proxy,
@@ -109,7 +113,7 @@ class RESTClientObject:
                 num_pools=pools_size,
                 maxsize=maxsize,
                 cert_reqs=cert_reqs,
-                ca_certs=ca_certs,
+                ca_certs=configuration.ssl_ca_cert,
                 cert_file=configuration.cert_file,
                 key_file=configuration.key_file,
                 **addition_pool_args,
@@ -145,7 +149,7 @@ class RESTClientObject:
                                  (connection, read) timeouts.
         """
         method = method.upper()
-        assert method in ["GET", "HEAD", "DELETE", "POST", "PUT", "PATCH", "OPTIONS"]
+        assert method in ['GET', 'HEAD', 'DELETE', 'POST', 'PUT', 'PATCH', 'OPTIONS']
 
         if post_params and body:
             raise ApiValueError("body parameter cannot be used with post_params parameter.")
@@ -155,20 +159,22 @@ class RESTClientObject:
 
         timeout = None
         if _request_timeout:
-            if isinstance(_request_timeout, (int,)):
+            if isinstance(_request_timeout, (int, float)):  # noqa: E501,F821
                 timeout = urllib3.Timeout(total=_request_timeout)
             elif isinstance(_request_timeout, tuple) and len(_request_timeout) == 2:
                 timeout = urllib3.Timeout(connect=_request_timeout[0], read=_request_timeout[1])
 
-        if "Content-Type" not in headers:
-            headers["Content-Type"] = "application/json"
-
         try:
             # For `POST`, `PUT`, `PATCH`, `OPTIONS`, `DELETE`
-            if method in ["POST", "PUT", "PATCH", "OPTIONS", "DELETE"]:
+            if method in ['POST', 'PUT', 'PATCH', 'OPTIONS', 'DELETE']:
+                # Only set a default Content-Type for POST, PUT, PATCH and OPTIONS requests
+                if (method != 'DELETE') and ('Content-Type' not in headers):
+                    headers['Content-Type'] = 'application/json'
                 if query_params:
-                    url += "?" + urlencode(query_params)
-                if re.search("json", headers["Content-Type"], re.IGNORECASE):
+                    url += '?' + urlencode(query_params)
+                if ('Content-Type' not in headers) or (
+                    re.search('json', headers['Content-Type'], re.IGNORECASE)
+                ):
                     request_body = None
                     if body is not None:
                         request_body = json.dumps(body)
@@ -180,7 +186,7 @@ class RESTClientObject:
                         timeout=timeout,
                         headers=headers,
                     )
-                elif headers["Content-Type"] == "application/x-www-form-urlencoded":  # noqa: E501
+                elif headers['Content-Type'] == 'application/x-www-form-urlencoded':  # noqa: E501
                     r = self.pool_manager.request(
                         method,
                         url,
@@ -190,11 +196,11 @@ class RESTClientObject:
                         timeout=timeout,
                         headers=headers,
                     )
-                elif headers["Content-Type"] == "multipart/form-data":
+                elif headers['Content-Type'] == 'multipart/form-data':
                     # must del headers['Content-Type'], or the correct
                     # Content-Type which generated by urllib3 will be
                     # overwritten.
-                    del headers["Content-Type"]
+                    del headers['Content-Type']
                     r = self.pool_manager.request(
                         method,
                         url,
@@ -234,7 +240,7 @@ class RESTClientObject:
                     headers=headers,
                 )
         except urllib3.exceptions.SSLError as e:
-            msg = f"{type(e).__name__}\n{str(e)}"
+            msg = "{0}\n{1}".format(type(e).__name__, str(e))
             raise ApiException(status=0, reason=msg)
 
         if _preload_content:
@@ -244,6 +250,18 @@ class RESTClientObject:
             logger.debug("response body: %s", r.data)
 
         if not 200 <= r.status <= 299:
+            if r.status == 401:
+                raise UnauthorizedException(http_resp=r)
+
+            if r.status == 403:
+                raise ForbiddenException(http_resp=r)
+
+            if r.status == 404:
+                raise NotFoundException(http_resp=r)
+
+            if 500 <= r.status <= 599:
+                raise ServiceException(http_resp=r)
+
             raise ApiException(http_resp=r)
 
         return r
@@ -290,13 +308,7 @@ class RESTClientObject:
         )
 
     def DELETE(
-        self,
-        url,
-        headers=None,
-        query_params=None,
-        body=None,
-        _preload_content=True,
-        _request_timeout=None,
+        self, url, headers=None, query_params=None, body=None, _preload_content=True, _request_timeout=None
     ):
         return self.request(
             "DELETE",
@@ -370,3 +382,54 @@ class RESTClientObject:
             _request_timeout=_request_timeout,
             body=body,
         )
+
+
+# end of class RESTClientObject
+def is_ipv4(target):
+    """Test if IPv4 address or not"""
+    try:
+        chk = ipaddress.IPv4Address(target)
+        return True
+    except ipaddress.AddressValueError:
+        return False
+
+
+def in_ipv4net(target, net):
+    """Test if target belongs to given IPv4 network"""
+    try:
+        nw = ipaddress.IPv4Network(net)
+        ip = ipaddress.IPv4Address(target)
+        if ip in nw:
+            return True
+        return False
+    except ipaddress.AddressValueError:
+        return False
+    except ipaddress.NetmaskValueError:
+        return False
+
+
+def should_bypass_proxies(url, no_proxy=None):
+    """Yet another requests.should_bypass_proxies
+    Test if proxies should not be used for a particular url.
+    """
+
+    parsed = urlparse(url)
+
+    # special cases
+    if parsed.hostname in [None, '']:
+        return True
+
+    # special cases
+    if no_proxy in [None, '']:
+        return False
+    if no_proxy == '*':
+        return True
+
+    no_proxy = no_proxy.lower().replace(' ', '')
+    entries = (host for host in no_proxy.split(',') if host)
+
+    if is_ipv4(parsed.hostname):
+        for item in entries:
+            if in_ipv4net(parsed.hostname, item):
+                return True
+    return proxy_bypass_environment(parsed.hostname, {'no': no_proxy})

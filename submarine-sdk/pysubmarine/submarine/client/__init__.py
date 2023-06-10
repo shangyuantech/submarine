@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# coding: utf-8
-
 # flake8: noqa
 
 """
@@ -30,36 +28,18 @@
 
 __version__ = "0.8.0-SNAPSHOT"
 
-# import apis into sdk package
-from submarine.client.api.environment_api import EnvironmentApi
-from submarine.client.api.experiment_api import ExperimentApi
-from submarine.client.api.notebook_api import NotebookApi
-from submarine.client.api.serve_api import ServeApi
-
 # import ApiClient
 from submarine.client.api_client import ApiClient
+
+# import Configuration
 from submarine.client.configuration import Configuration
+
+# import exceptions
 from submarine.client.exceptions import (
+    ApiAttributeError,
     ApiException,
     ApiKeyError,
     ApiTypeError,
     ApiValueError,
     OpenApiException,
 )
-
-# import models into sdk package
-from submarine.client.models.code_spec import CodeSpec
-from submarine.client.models.environment_spec import EnvironmentSpec
-from submarine.client.models.experiment_meta import ExperimentMeta
-from submarine.client.models.experiment_spec import ExperimentSpec
-from submarine.client.models.experiment_task_spec import ExperimentTaskSpec
-from submarine.client.models.experiment_template_submit import ExperimentTemplateSubmit
-from submarine.client.models.json_response import JsonResponse
-from submarine.client.models.kernel_spec import KernelSpec
-from submarine.client.models.notebook_meta import NotebookMeta
-from submarine.client.models.notebook_pod_spec import NotebookPodSpec
-from submarine.client.models.notebook_spec import NotebookSpec
-from submarine.client.models.serve_spec import ServeSpec
-
-# import utils
-from submarine.client.utils.api_utils import *

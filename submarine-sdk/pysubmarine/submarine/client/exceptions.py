@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# coding: utf-8
-
 """
     Submarine API
 
@@ -54,8 +52,8 @@ class ApiTypeError(OpenApiException, TypeError):
         self.key_type = key_type
         full_msg = msg
         if path_to_item:
-            full_msg = f"{msg} at {render_path(path_to_item)}"
-        super().__init__(full_msg)
+            full_msg = "{0} at {1}".format(msg, render_path(path_to_item))
+        super(ApiTypeError, self).__init__(full_msg)
 
 
 class ApiValueError(OpenApiException, ValueError):
@@ -72,8 +70,27 @@ class ApiValueError(OpenApiException, ValueError):
         self.path_to_item = path_to_item
         full_msg = msg
         if path_to_item:
-            full_msg = f"{msg} at {render_path(path_to_item)}"
-        super().__init__(full_msg)
+            full_msg = "{0} at {1}".format(msg, render_path(path_to_item))
+        super(ApiValueError, self).__init__(full_msg)
+
+
+class ApiAttributeError(OpenApiException, AttributeError):
+    def __init__(self, msg, path_to_item=None):
+        """
+        Raised when an attribute reference or assignment fails.
+
+        Args:
+            msg (str): the exception message
+
+        Keyword Args:
+            path_to_item (None/list) the path to the exception in the
+                received_data dict
+        """
+        self.path_to_item = path_to_item
+        full_msg = msg
+        if path_to_item:
+            full_msg = "{0} at {1}".format(msg, render_path(path_to_item))
+        super(ApiAttributeError, self).__init__(full_msg)
 
 
 class ApiKeyError(OpenApiException, KeyError):
@@ -89,8 +106,8 @@ class ApiKeyError(OpenApiException, KeyError):
         self.path_to_item = path_to_item
         full_msg = msg
         if path_to_item:
-            full_msg = f"{msg} at {render_path(path_to_item)}"
-        super().__init__(full_msg)
+            full_msg = "{0} at {1}".format(msg, render_path(path_to_item))
+        super(ApiKeyError, self).__init__(full_msg)
 
 
 class ApiException(OpenApiException):
@@ -108,14 +125,34 @@ class ApiException(OpenApiException):
 
     def __str__(self):
         """Custom error messages for exception"""
-        error_message = f"({self.status})\nReason: {self.reason}\n"
+        error_message = "({0})\n" "Reason: {1}\n".format(self.status, self.reason)
         if self.headers:
-            error_message += f"HTTP response headers: {self.headers}\n"
+            error_message += "HTTP response headers: {0}\n".format(self.headers)
 
         if self.body:
-            error_message += f"HTTP response body: {self.body}\n"
+            error_message += "HTTP response body: {0}\n".format(self.body)
 
         return error_message
+
+
+class NotFoundException(ApiException):
+    def __init__(self, status=None, reason=None, http_resp=None):
+        super(NotFoundException, self).__init__(status, reason, http_resp)
+
+
+class UnauthorizedException(ApiException):
+    def __init__(self, status=None, reason=None, http_resp=None):
+        super(UnauthorizedException, self).__init__(status, reason, http_resp)
+
+
+class ForbiddenException(ApiException):
+    def __init__(self, status=None, reason=None, http_resp=None):
+        super(ForbiddenException, self).__init__(status, reason, http_resp)
+
+
+class ServiceException(ApiException):
+    def __init__(self, status=None, reason=None, http_resp=None):
+        super(ServiceException, self).__init__(status, reason, http_resp)
 
 
 def render_path(path_to_item):
@@ -123,7 +160,7 @@ def render_path(path_to_item):
     result = ""
     for pth in path_to_item:
         if isinstance(pth, int):
-            result += f"[{pth}]"
+            result += "[{0}]".format(pth)
         else:
-            result += f"['{pth}']"
+            result += "['{0}']".format(pth)
     return result
